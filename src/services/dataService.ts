@@ -4,6 +4,25 @@ const USERS_KEY = 'hr_ai_users';
 const ASSESSMENTS_KEY = 'hr_ai_assessments';
 
 export const dataService = {
+  initFromBackend: async () => {
+    try {
+      const [uRes, aRes] = await Promise.all([
+        fetch('/api/users'),
+        fetch('/api/assessments')
+      ]);
+      if (uRes.ok) {
+        const users = await uRes.json();
+        localStorage.setItem(USERS_KEY, JSON.stringify(users));
+      }
+      if (aRes.ok) {
+        const assessments = await aRes.json();
+        localStorage.setItem(ASSESSMENTS_KEY, JSON.stringify(assessments));
+      }
+    } catch (e) {
+      console.error('Failed to init from backend', e);
+    }
+  },
+
   getUsers: (): User[] => {
     const data = localStorage.getItem(USERS_KEY);
     return data ? JSON.parse(data) : [];
@@ -11,10 +30,18 @@ export const dataService = {
 
   setUsers: (users: User[]) => {
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    // Sync to backend
+    fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(users)
+    }).catch(e => console.error('Failed to sync users to backend', e));
   },
 
   getUserByEmail(email: string): User | undefined {
-    return this.getUsers().find(u => u.email === email);
+    const raw = localStorage.getItem(USERS_KEY);
+    const users: User[] = raw ? JSON.parse(raw) : [];
+    return users.find(u => u.email === email);
   },
 
   getAssessments: (): AssessmentRecord[] => {
@@ -23,7 +50,8 @@ export const dataService = {
   },
 
   saveAssessment: (record: AssessmentRecord) => {
-    const assessments = this.getAssessments();
+    const raw = localStorage.getItem(ASSESSMENTS_KEY);
+    const assessments: AssessmentRecord[] = raw ? JSON.parse(raw) : [];
     const index = assessments.findIndex(a => a.userEmail === record.userEmail);
     if (index >= 0) {
       assessments[index] = record;
@@ -31,10 +59,18 @@ export const dataService = {
       assessments.push(record);
     }
     localStorage.setItem(ASSESSMENTS_KEY, JSON.stringify(assessments));
+    // Sync to backend
+    fetch('/api/assessments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(record)
+    }).catch(e => console.error('Failed to sync assessment to backend', e));
   },
 
   getAssessmentByEmail(email: string): AssessmentRecord | undefined {
-    return this.getAssessments().find(a => a.userEmail === email);
+    const raw = localStorage.getItem(ASSESSMENTS_KEY);
+    const assessments: AssessmentRecord[] = raw ? JSON.parse(raw) : [];
+    return assessments.find(a => a.userEmail === email);
   },
 
   // Compute logic

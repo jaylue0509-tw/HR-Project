@@ -27,9 +27,9 @@ export default function HRDashboard() {
             department: row['部門'] || row['Department'] || '',
             name: row['姓名'] || row['Name'] || '',
             title: row['職稱'] || row['Title'] || '',
-            email: row['Email'] || row['EMAIL'] || '',
-            supervisorName: row['主管'] || row['Supervisor'] || '',
-            supervisorEmail: row['主管Email'] || row['主管EMAIL'] || '',
+            email: (row['Email'] || row['EMAIL'] || row['email'] || '').trim(),
+            supervisorName: row['主管姓名'] || row['主管'] || row['Supervisor'] || '',
+            supervisorEmail: (row['主管Email'] || row['主管EMAIL'] || row['supervisorEmail'] || '').trim(),
           }));
           
           if (importedUsers.length === 0 || !importedUsers[0].email) {
@@ -67,9 +67,9 @@ export default function HRDashboard() {
           department: row['部門'] || row['Department'] || '',
           name: row['姓名'] || row['Name'] || '',
           title: row['職稱'] || row['Title'] || '',
-          email: row['Email'] || row['EMAIL'] || '',
-          supervisorName: row['主管'] || row['Supervisor'] || '',
-          supervisorEmail: row['主管Email'] || row['主管EMAIL'] || '',
+          email: (row['Email'] || row['EMAIL'] || row['email'] || '').trim(),
+          supervisorName: row['主管姓名'] || row['主管'] || row['Supervisor'] || '',
+          supervisorEmail: (row['主管Email'] || row['主管EMAIL'] || row['supervisorEmail'] || '').trim(),
         }));
 
         if (importedUsers.length === 0 || !importedUsers[0].email) {
@@ -88,7 +88,7 @@ export default function HRDashboard() {
     reader.readAsArrayBuffer(file);
   };
 
-  const sampleCsv = `公司,部門,姓名,職稱,EMAIL,主管,主管EMAIL
+  const sampleCsv = `公司,部門,姓名,職稱,Email,主管姓名,主管Email
 A公司,行銷部,王大明,專員,ming@test.com,李主管,lee@test.com
 A公司,行銷部,陳小華,企劃,hua@test.com,李主管,lee@test.com
 B公司,資訊部,張大智,工程師,zhi@test.com,趙主管,zhao@test.com
@@ -131,7 +131,7 @@ B公司,人資部,周小黑,專員,hei@test.com,黃主管,huang@test.com`;
             <h3 className="text-lg font-semibold text-slate-800 mb-4">資料導入區</h3>
             <p className="text-sm text-slate-500 mb-4">
               請貼上 CSV 格式內容，必須包含以下欄位：<br/>
-              <code>公司, 部門, 姓名, 職稱, EMAIL, 主管, 主管EMAIL</code>
+              <code>公司, 部門, 姓名, 職稱, Email, 主管姓名, 主管Email</code>
             </p>
             <textarea
               value={csvText}

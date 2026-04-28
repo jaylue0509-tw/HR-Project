@@ -20,6 +20,7 @@ export default function EmployeeDashboard() {
   const [evidenceLink, setEvidenceLink] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
     const loadData = () => {
       if (currentUser) {
         const existing = dataService.getAssessmentByEmail(currentUser.email);

@@ -19,7 +19,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
-    refreshUsers();
+    dataService.initFromBackend().then(() => {
+      refreshUsers();
+    });
   }, []);
 
   const refreshUsers = () => {
