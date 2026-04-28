@@ -62,7 +62,7 @@ export default function EmployeeDashboard() {
   };
 
   const renderSlider = (label: string, field: keyof AssessmentScores, desc: string) => (
-    <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 flex flex-col justify-between">
+    <div className="bg-white/50 backdrop-blur-sm p-4 rounded-xl border border-white/60 shadow-sm flex flex-col justify-between">
       <div>
         <div className="flex justify-between items-center mb-1">
           <label className="text-sm font-semibold text-slate-800">{label}</label>
@@ -92,7 +92,7 @@ export default function EmployeeDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Left: Input Form */}
-        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+        <div className="lg:col-span-2 bg-white/40 backdrop-blur-xl rounded-2xl shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] border border-white/60 p-6">
           <form onSubmit={handleSubmit} className="space-y-8">
             
             {/* Base info */}
@@ -102,13 +102,13 @@ export default function EmployeeDashboard() {
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">常用 AI 工具名稱</label>
                   <input type="text" value={tools} onChange={e => setTools(e.target.value)} disabled={record?.status === 'Reviewed'}
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                    className="w-full rounded-xl bg-white/50 backdrop-blur-sm border border-white/60 px-4 py-2.5 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all placeholder:text-slate-400"
                     placeholder="例如：ChatGPT, Claude, Midjourney" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">使用頻率</label>
                   <select value={frequency} onChange={e => setFrequency(e.target.value)} disabled={record?.status === 'Reviewed'}
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
+                    className="w-full rounded-xl bg-white/50 backdrop-blur-sm border border-white/60 px-4 py-2.5 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all">
                     <option>每天多次</option>
                     <option>每天一次</option>
                     <option>每週多次</option>
@@ -144,13 +144,13 @@ export default function EmployeeDashboard() {
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">量化成效說明</label>
                   <textarea value={evidenceDesc} onChange={e => setEvidenceDesc(e.target.value)} disabled={record?.status === 'Reviewed'}
-                    className="w-full h-24 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                    className="w-full h-24 rounded-xl bg-white/50 backdrop-blur-sm border border-white/60 px-4 py-3 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all placeholder:text-slate-400"
                     placeholder="描述具體成效，如：節省每週工時 5 小時、品質提升... 等等" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">相關連結 / 附件位置</label>
                   <input type="text" value={evidenceLink} onChange={e => setEvidenceLink(e.target.value)} disabled={record?.status === 'Reviewed'}
-                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                    className="w-full rounded-xl bg-white/50 backdrop-blur-sm border border-white/60 px-4 py-2.5 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all placeholder:text-slate-400"
                     placeholder="您的產出檔案連結、SOP 連結或對話記錄分享" />
                 </div>
               </div>
@@ -159,7 +159,7 @@ export default function EmployeeDashboard() {
             {record?.status !== 'Reviewed' && (
               <div className="flex justify-end">
                 <button type="submit" disabled={submitting}
-                  className="px-6 py-2 bg-slate-900 text-white rounded-md font-semibold hover:bg-slate-800 disabled:opacity-50">
+                  className="px-6 py-2.5 bg-slate-800/90 backdrop-blur-md text-white rounded-xl font-semibold hover:bg-slate-900 shadow-md border border-slate-700/50 transition-all disabled:opacity-50">
                   送出評核
                 </button>
               </div>
@@ -176,7 +176,7 @@ export default function EmployeeDashboard() {
         {/* Right: Results / Status */}
         <div className="lg:col-span-1 space-y-6">
           {record ? (
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            <div className="bg-white/40 backdrop-blur-xl rounded-2xl shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] border border-white/60 p-6">
               <h3 className="text-lg font-semibold text-slate-800 mb-4 text-center">評核狀態</h3>
               
               <div className="flex flex-col items-center justify-center py-6 border-b border-slate-100">
@@ -192,7 +192,7 @@ export default function EmployeeDashboard() {
               {record.supervisorReview && (
                 <div className="mt-6 pt-4 border-t border-slate-200">
                   <h4 className="font-semibold text-slate-800 mb-4">主管覆核結果</h4>
-                  <div className="bg-slate-50 p-4 rounded-lg space-y-2">
+                  <div className="bg-white/50 backdrop-blur-sm p-4 rounded-xl space-y-2 border border-white/60 shadow-sm">
                     <div className="flex justify-between items-center text-sm mb-3">
                       <span className="text-slate-500">最終評級</span>
                       <span className="font-bold text-blue-600 text-2xl">{record.supervisorReview.finalGrade} 級</span>
@@ -206,7 +206,7 @@ export default function EmployeeDashboard() {
               )}
             </div>
           ) : (
-            <div className="bg-slate-50 rounded-xl border border-dashed border-slate-300 p-8 flex flex-col items-center justify-center text-center text-slate-500">
+            <div className="bg-white/30 backdrop-blur-md rounded-2xl border border-dashed border-white/60 p-8 flex flex-col items-center justify-center text-center text-slate-500">
                尚未送出評核<br/><span className="text-xs mt-2">填寫送出後即可檢視狀態</span>
             </div>
           )}

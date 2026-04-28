@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
 import { User, AssessmentRecord } from '../types';
 import { dataService } from '../services/dataService';
 import { useAuth } from '../context/AuthContext';
@@ -13,6 +14,7 @@ export default function HRDashboard() {
 
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<AssessmentRecord | undefined>(undefined);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImport = () => {
     Papa.parse<any>(csvText, {
@@ -37,13 +39,53 @@ export default function HRDashboard() {
 
           dataService.setUsers(importedUsers);
           refreshUsers();
-          setMsg(`成功導入 ${importedUsers.length} 筆員工資料！`);
+          setMsg(`成功從 CSV 導入 ${importedUsers.length} 筆員工資料！`);
           setCsvText('');
         } catch (e) {
           setMsg('解析失敗，請確認欄位名稱。');
         }
       }
     });
+  };
+
+  const handleExcelImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const arrayBuffer = evt.target?.result as ArrayBuffer;
+        const data = new Uint8Array(arrayBuffer);
+        const wb = XLSX.read(data, { type: 'array' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const jsonData = XLSX.utils.sheet_to_json(ws);
+        
+        const importedUsers: User[] = jsonData.map((row: any) => ({
+          company: row['公司'] || row['Company'] || '',
+          department: row['部門'] || row['Department'] || '',
+          name: row['姓名'] || row['Name'] || '',
+          title: row['職稱'] || row['Title'] || '',
+          email: row['Email'] || row['EMAIL'] || '',
+          supervisorName: row['主管'] || row['Supervisor'] || '',
+          supervisorEmail: row['主管Email'] || row['主管EMAIL'] || '',
+        }));
+
+        if (importedUsers.length === 0 || !importedUsers[0].email) {
+          setMsg('Excel 資料格式不正確，找不到 Email 欄位。');
+          return;
+        }
+
+        dataService.setUsers(importedUsers);
+        refreshUsers();
+        setMsg(`成功從 Excel 導入 ${importedUsers.length} 筆員工資料！`);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      } catch (err) {
+        setMsg('Excel 解析失敗，請確認檔案格式與欄位名稱。');
+      }
+    };
+    reader.readAsArrayBuffer(file);
   };
 
   const sampleCsv = `公司,部門,姓名,職稱,EMAIL,主管,主管EMAIL
@@ -85,7 +127,7 @@ B公司,人資部,周小黑,專員,hei@test.com,黃主管,huang@test.com`;
 
       {activeTab === 'import' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in">
-          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+          <div className="bg-white/40 backdrop-blur-xl p-6 rounded-2xl border border-white/60 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)]">
             <h3 className="text-lg font-semibold text-slate-800 mb-4">資料導入區</h3>
             <p className="text-sm text-slate-500 mb-4">
               請貼上 CSV 格式內容，必須包含以下欄位：<br/>
@@ -94,16 +136,31 @@ B公司,人資部,周小黑,專員,hei@test.com,黃主管,huang@test.com`;
             <textarea
               value={csvText}
               onChange={(e) => setCsvText(e.target.value)}
-              className="w-full h-48 rounded-md border border-slate-300 p-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 mb-3"
+              className="w-full h-48 rounded-xl bg-white/50 backdrop-blur-sm border border-white/60 p-3 text-sm focus:border-blue-400 focus:ring-1 focus:ring-blue-400 focus:bg-white/70 transition-all mb-3"
               placeholder={sampleCsv}
             />
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-wrap items-center gap-3">
               <button
                 onClick={handleImport}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium shadow-sm hover:bg-blue-700"
               >
-                確認導入
+                導入文字資料
               </button>
+              
+              <input 
+                type="file" 
+                accept=".xlsx, .xls, .csv" 
+                ref={fileInputRef}
+                onChange={handleExcelImport}
+                className="hidden" 
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium shadow-sm hover:bg-green-700"
+              >
+                匯入 Excel
+              </button>
+
               <button
                 onClick={() => setCsvText(sampleCsv)}
                 className="px-4 py-2 bg-slate-100 text-slate-700 rounded-md text-sm font-medium shadow-sm hover:bg-slate-200"
@@ -114,61 +171,61 @@ B公司,人資部,周小黑,專員,hei@test.com,黃主管,huang@test.com`;
                 onClick={() => {
                   const testUsers = dataService.getUsers();
                   if (testUsers.length > 0) {
-                     const u = testUsers[0]; // mock for first user
-                     dataService.saveAssessment({
-                       userEmail: u.email,
-                       status: 'Submitted',
-                       submittedAt: new Date().toISOString(),
-                       data: {
-                         tools: 'ChatGPT, Claude', frequency: '每天多次',
-                         scores: {
-                           textGeneration: 4, contentOrganization: 4, workEfficiency: 4, processOptimization: 3, analysis: 3, decisionSupport: 3, ideaGeneration: 3, professionalApplication: 3, structureDesign: 2, botConstruction: 2
+                     testUsers.forEach((u, idx) => {
+                       const randomScore = () => Math.floor(Math.random() * 3) + 2; // 2 to 4
+                       const scores = {
+                           textGeneration: randomScore(), contentOrganization: randomScore(), workEfficiency: randomScore(), processOptimization: randomScore(), analysis: randomScore(), decisionSupport: randomScore(), ideaGeneration: randomScore(), professionalApplication: randomScore(), structureDesign: randomScore(), botConstruction: randomScore()
+                       };
+                       const isReviewed = idx % 3 === 0; // 1/3 are reviewed
+                       
+                       const record: AssessmentRecord = {
+                         userEmail: u.email,
+                         status: isReviewed ? 'Reviewed' : 'Submitted',
+                         submittedAt: new Date().toISOString(),
+                         data: {
+                           tools: idx % 2 === 0 ? 'ChatGPT, Claude' : 'Midjourney, Stable Diffusion',
+                           frequency: idx % 2 === 0 ? '每天多次' : '每週幾次',
+                           scores,
+                           evidenceDesc: '優化流程，提升效率 20%',
+                           evidenceLink: 'https://example.com/evidence'
                          },
-                         evidenceDesc: '每週節省約 5 小時',
-                         evidenceLink: 'https://example.com/evidence'
-                       },
-                       computed: dataService.computeAssessment({
-                           textGeneration: 4, contentOrganization: 4, workEfficiency: 4, processOptimization: 3, analysis: 3, decisionSupport: 3, ideaGeneration: 3, professionalApplication: 3, structureDesign: 2, botConstruction: 2
-                       })
+                         computed: dataService.computeAssessment(scores)
+                       };
+                       
+                       if (isReviewed) {
+                         // Mock supervisor review
+                         const review = {
+                           impactScore: Math.floor(Math.random() * 3) + 2,
+                           evidenceStatus: 'Approved' as const,
+                           comments: '表現不錯，繼續保持。',
+                           reviewedAt: new Date().toISOString(),
+                           finalGrade: 'B' as any
+                         };
+                         review.finalGrade = dataService.calculateFinalGrade(record.computed!, review);
+                         record.supervisorReview = review;
+                       }
+                       
+                       dataService.saveAssessment(record);
                      });
                      
-                     if (testUsers.length > 1) {
-                        const u2 = testUsers[1];
-                        dataService.saveAssessment({
-                           userEmail: u2.email,
-                           status: 'Submitted',
-                           submittedAt: new Date().toISOString(),
-                           data: {
-                             tools: 'Midjourney, Claude', frequency: '每週多次',
-                             scores: {
-                               textGeneration: 3, contentOrganization: 3, workEfficiency: 3, processOptimization: 3, analysis: 4, decisionSupport: 4, ideaGeneration: 4, professionalApplication: 4, structureDesign: 3, botConstruction: 2
-                             },
-                             evidenceDesc: '製作行銷素材速度提升 30%',
-                             evidenceLink: ''
-                           },
-                           computed: dataService.computeAssessment({
-                               textGeneration: 3, contentOrganization: 3, workEfficiency: 3, processOptimization: 3, analysis: 4, decisionSupport: 4, ideaGeneration: 4, professionalApplication: 4, structureDesign: 3, botConstruction: 2
-                           })
-                        });
-                     }
-                     setMsg('已產出測試評核紀錄，可用主管(如:lee@test.com)視角登入查看');
+                     setMsg(`已為 ${testUsers.length} 位員工自動產出測試評核紀錄！`);
                   } else {
-                     setMsg('請先導入資料再產出測試評核');
+                     setMsg('請先匯入名單資料，再自動產生測試評核！');
                   }
                 }}
-                className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-md text-sm font-medium shadow-sm hover:bg-indigo-100 border border-indigo-200"
+                className="px-4 py-2 bg-indigo-500/80 backdrop-blur-md text-white rounded-xl text-sm font-medium shadow-md hover:bg-indigo-600 border border-white/20 transition-all"
               >
-                自動產生測試評核
+                自動產生全體測試評核
               </button>
               {msg && <span className="text-sm text-green-600 font-medium">{msg}</span>}
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+          <div className="bg-white/40 backdrop-blur-xl p-6 rounded-2xl border border-white/60 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] flex flex-col">
             <h3 className="text-lg font-semibold text-slate-800 mb-4">目前員工名單 ({users.length})</h3>
             <div className="overflow-y-auto flex-1 max-h-64 border rounded-md">
               <table className="min-w-full divide-y divide-slate-200 text-sm">
-                <thead className="bg-slate-50">
+                <thead className="bg-white/30 backdrop-blur-md border-b border-white/40">
                   <tr>
                     <th className="px-4 py-2 text-left font-semibold text-slate-600">姓名</th>
                     <th className="px-4 py-2 text-left font-semibold text-slate-600">Email</th>
@@ -176,7 +233,7 @@ B公司,人資部,周小黑,專員,hei@test.com,黃主管,huang@test.com`;
                     <th className="px-4 py-2 text-left font-semibold text-slate-600">主管 (姓名 / Email)</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200 bg-white">
+                <tbody className="divide-y divide-white/40 bg-transparent">
                   {users.map((u, i) => (
                     <tr key={i}>
                       <td className="px-4 py-2 whitespace-nowrap">{u.name}</td>
@@ -204,11 +261,11 @@ B公司,人資部,周小黑,專員,hei@test.com,黃主管,huang@test.com`;
       {activeTab === 'overview' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in">
           {/* Left: Team List */}
-          <div className="lg:col-span-1 bg-white rounded-xl shadow-sm border border-slate-200 p-0 overflow-hidden flex flex-col h-[700px]">
+          <div className="lg:col-span-1 bg-white/40 backdrop-blur-xl rounded-2xl shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] border border-white/60 p-0 overflow-hidden flex flex-col h-[700px]">
             <div className="p-4 bg-slate-50 border-b border-slate-200">
                <h3 className="font-semibold text-slate-800">全體員工列表</h3>
             </div>
-            <div className="overflow-y-auto flex-1 p-2 space-y-1 bg-slate-50">
+            <div className="overflow-y-auto flex-1 p-2 space-y-1 bg-white/20 backdrop-blur-sm">
               {users.map((u, idx) => {
                 const rec = dataService.getAssessmentByEmail(u.email);
                 const statusColor = !rec ? 'bg-slate-100 text-slate-500' 
@@ -220,10 +277,10 @@ B公司,人資部,周小黑,專員,hei@test.com,黃主管,huang@test.com`;
                   <button 
                     key={idx} 
                     onClick={() => handleSelectUser(u)}
-                    className={`w-full text-left p-3 rounded-lg border transition-all ${
+                    className={`w-full text-left p-3 rounded-xl border transition-all backdrop-blur-sm ${
                       selectedUser?.email === u.email 
-                        ? 'bg-blue-50 border-blue-200 ring-1 ring-blue-500' 
-                        : 'bg-white border-transparent hover:border-slate-300 shadow-sm'
+                        ? 'bg-blue-100/50 border-blue-300 ring-1 ring-blue-400 shadow-sm' 
+                        : 'bg-white/40 border-white/50 hover:bg-white/60 hover:shadow-sm'
                     }`}
                   >
                     <div className="flex justify-between items-start">
@@ -247,7 +304,7 @@ B公司,人資部,周小黑,專員,hei@test.com,黃主管,huang@test.com`;
           </div>
 
           {/* Right: Review detail */}
-          <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col h-[700px] overflow-y-auto">
+          <div className="lg:col-span-2 bg-white/40 backdrop-blur-xl rounded-2xl shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] border border-white/60 p-6 flex flex-col h-[700px] overflow-y-auto">
             {!selectedUser ? (
               <div className="flex-1 flex items-center justify-center text-slate-400">
                  請由左側選擇一名員工以檢視評核狀態
@@ -281,7 +338,7 @@ B公司,人資部,周小黑,專員,hei@test.com,黃主管,huang@test.com`;
                    <div className="space-y-4">
                       <div>
                         <h4 className="font-semibold text-slate-800 mb-2 border-l-4 border-blue-500 pl-2 text-sm">成果與證據</h4>
-                        <div className="bg-slate-50 rounded-lg p-3 text-sm border border-slate-200 h-64 overflow-y-auto space-y-3">
+                        <div className="bg-white/50 backdrop-blur-sm rounded-xl p-3 text-sm border border-white/60 h-64 overflow-y-auto space-y-3">
                            <div>
                              <div className="text-xs text-slate-500 font-medium">量化成效</div>
                              <p className="mt-1 text-slate-800">{selectedRecord.data?.evidenceDesc || '未提報'}</p>

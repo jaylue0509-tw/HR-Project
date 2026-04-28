@@ -39,8 +39,8 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-      <div className="max-w-md w-full bg-white rounded-xl shadow-sm border border-slate-200 p-8">
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-white/40 backdrop-blur-xl rounded-2xl shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] border border-white/60 p-8">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">AI 人才評核系統</h1>
           <p className="text-sm text-slate-500 mt-2">請選擇您的身分並登入</p>
@@ -58,10 +58,10 @@ export default function Login() {
                     setRole(r);
                     setError('');
                   }}
-                  className={`py-2 px-3 text-sm font-medium rounded-md border transition-colors ${
+                  className={`py-2 px-3 text-sm font-medium rounded-xl border transition-all backdrop-blur-sm ${
                     role === r
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                      ? 'bg-blue-600/90 text-white border-blue-500 shadow-md'
+                      : 'bg-white/40 text-slate-700 border-white/50 hover:bg-white/60 hover:shadow-sm'
                   }`}
                 >
                   {r === 'Employee' ? '員工' : r === 'HR' ? '人資' : '主管'}
@@ -81,7 +81,7 @@ export default function Login() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="請輸入您的真實姓名"
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-xl bg-white/50 backdrop-blur-sm border border-white/60 px-4 py-2.5 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all placeholder:text-slate-400"
                   required
                 />
               </div>
@@ -94,7 +94,7 @@ export default function Login() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="請輸入您的工作 Email"
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-xl bg-white/50 backdrop-blur-sm border border-white/60 px-4 py-2.5 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all placeholder:text-slate-400"
                   required
                 />
               </div>
@@ -105,7 +105,7 @@ export default function Login() {
 
           <button
             type="submit"
-            className="w-full rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2"
+            className="w-full rounded-xl bg-slate-800/90 backdrop-blur-md px-4 py-3 text-sm font-semibold text-white shadow-md hover:bg-slate-900 transition-all focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 border border-slate-700/50"
           >
             登入
           </button>

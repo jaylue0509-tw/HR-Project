@@ -81,11 +81,11 @@ export default function SupervisorDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Left: Team List */}
-        <div className="lg:col-span-1 bg-white rounded-xl shadow-sm border border-slate-200 p-0 overflow-hidden flex flex-col h-[700px]">
-          <div className="p-4 bg-slate-50 border-b border-slate-200">
+        <div className="lg:col-span-1 bg-white/40 backdrop-blur-xl rounded-2xl shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] border border-white/60 p-0 overflow-hidden flex flex-col h-[700px]">
+          <div className="p-4 bg-white/30 backdrop-blur-md border-b border-white/40">
              <h3 className="font-semibold text-slate-800">團隊成員列表</h3>
           </div>
-          <div className="overflow-y-auto flex-1 p-2 space-y-1 bg-slate-50">
+          <div className="overflow-y-auto flex-1 p-2 space-y-1 bg-white/20 backdrop-blur-sm">
             {teamRecords.map((t, idx) => {
               const statusColor = !t.record ? 'bg-slate-100 text-slate-500' 
                                 : t.record.status === 'Reviewed' ? 'bg-green-100 text-green-700' 
@@ -97,10 +97,10 @@ export default function SupervisorDashboard() {
                   key={idx} 
                   onClick={() => t.record && openReview(t.record)}
                   disabled={!t.record}
-                  className={`w-full text-left p-3 rounded-lg border transition-all ${
+                  className={`w-full text-left p-3 rounded-xl border transition-all backdrop-blur-sm ${
                     selectedRecord?.userEmail === t.user.email 
-                      ? 'bg-blue-50 border-blue-200 ring-1 ring-blue-500' 
-                      : 'bg-white border-transparent hover:border-slate-300 shadow-sm'
+                      ? 'bg-blue-100/50 border-blue-300 ring-1 ring-blue-400 shadow-sm' 
+                      : 'bg-white/40 border-white/50 hover:bg-white/60 hover:shadow-sm'
                   } ${!t.record ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <div className="flex justify-between items-start">
@@ -124,7 +124,7 @@ export default function SupervisorDashboard() {
         </div>
 
         {/* Right: Review detail */}
-        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col h-[700px] overflow-y-auto">
+        <div className="lg:col-span-2 bg-white/40 backdrop-blur-xl rounded-2xl shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] border border-white/60 p-6 flex flex-col h-[700px] overflow-y-auto">
           {selectedRecord && selectedRecord.computed && selectedRecord.data ? (
             <div className="space-y-6">
               
@@ -149,7 +149,7 @@ export default function SupervisorDashboard() {
                  <div className="space-y-4">
                     <div>
                       <h4 className="font-semibold text-slate-800 mb-2 border-l-4 border-blue-500 pl-2 text-sm">成果與證據</h4>
-                      <div className="bg-slate-50 rounded-lg p-3 text-sm border border-slate-200 h-64 overflow-y-auto space-y-3">
+                      <div className="bg-white/50 backdrop-blur-sm rounded-xl p-3 text-sm border border-white/60 h-64 overflow-y-auto space-y-3">
                          <div>
                            <div className="text-xs text-slate-500 font-medium">量化成效</div>
                            <p className="mt-1 text-slate-800">{selectedRecord.data.evidenceDesc || '未提報'}</p>
@@ -172,7 +172,7 @@ export default function SupervisorDashboard() {
               </div>
 
               {/* Review Form */}
-              <div className="bg-blue-50/50 rounded-xl p-5 border border-blue-100 mt-4">
+              <div className="bg-blue-100/40 backdrop-blur-sm rounded-2xl p-5 border border-blue-200/50 shadow-sm mt-4">
                  <h4 className="font-semibold text-slate-800 mb-4 border-l-4 border-blue-600 pl-2">主管評分與判定</h4>
                  
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -180,7 +180,7 @@ export default function SupervisorDashboard() {
                       <label className="block text-sm font-medium text-slate-700 mb-1">
                         1. 成果成熟度 (Impact) <span className="font-normal text-slate-500">- 從會用到跨部門可複製</span>
                       </label>
-                      <select value={impactScore} onChange={e => setImpactScore(Number(e.target.value))} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 outline-none">
+                      <select value={impactScore} onChange={e => setImpactScore(Number(e.target.value))} className="w-full rounded-xl bg-white/50 backdrop-blur-sm border border-white/60 px-4 py-2.5 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all">
                          <option value={1}>1 - 幾近無產出</option>
                          <option value={2}>2 - 初步嘗試，產出不穩定</option>
                          <option value={3}>3 - 能獨力量產，品質中等</option>
@@ -193,7 +193,7 @@ export default function SupervisorDashboard() {
                       <label className="block text-sm font-medium text-slate-700 mb-1">
                         2. 證據狀態審核 <span className="font-normal text-slate-500">- 升遷 A/B 級必備</span>
                       </label>
-                      <select value={evidenceStatus} onChange={e => setEvidenceStatus(e.target.value as any)} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 outline-none">
+                      <select value={evidenceStatus} onChange={e => setEvidenceStatus(e.target.value as any)} className="w-full rounded-xl bg-white/50 backdrop-blur-sm border border-white/60 px-4 py-2.5 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all">
                          <option value="None">未提供 / 無法認定</option>
                          <option value="Pending">已提供，待確認</option>
                          <option value="Rejected">已審核：不符合標準</option>
@@ -204,17 +204,17 @@ export default function SupervisorDashboard() {
 
                  <div className="mb-4">
                    <label className="block text-sm font-medium text-slate-700 mb-1">主管評語 (選填)</label>
-                   <textarea value={comments} onChange={e => setComments(e.target.value)} className="w-full h-16 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 outline-none" placeholder="給予員工後續發展建議..."></textarea>
+                   <textarea value={comments} onChange={e => setComments(e.target.value)} className="w-full h-16 rounded-xl bg-white/50 backdrop-blur-sm border border-white/60 px-4 py-3 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all placeholder:text-slate-400" placeholder="給予員工後續發展建議..."></textarea>
                  </div>
 
-                 <div className="flex justify-between items-center bg-white p-3 rounded-lg border border-slate-200">
+                 <div className="flex justify-between items-center bg-white/60 backdrop-blur-md p-4 rounded-xl border border-white/60 shadow-sm">
                     <div className="text-sm">
                       動態試算結果：
                       <span className="ml-2 font-bold text-lg text-slate-900">
                          {dataService.calculateFinalGrade(selectedRecord.computed, { evidenceStatus, impactScore })} 級
                       </span>
                     </div>
-                    <button onClick={submitReview} className="bg-slate-900 text-white px-5 py-2 rounded-md font-semibold hover:bg-slate-800 shadow-sm text-sm">
+                    <button onClick={submitReview} className="bg-slate-800/90 backdrop-blur-md text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-slate-900 shadow-md border border-slate-700/50 transition-all text-sm">
                        完成覆核並送出
                     </button>
                  </div>
