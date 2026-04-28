@@ -59,6 +59,7 @@ export default function EmployeeDashboard() {
     dataService.saveAssessment(newRecord);
     setRecord(newRecord);
     setSubmitting(false);
+    alert('✅ 評核表單已成功送出！');
   };
 
   const renderSlider = (label: string, field: keyof AssessmentScores, desc: string) => (
@@ -183,7 +184,7 @@ export default function EmployeeDashboard() {
                 <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 text-2xl ${record.status === 'Reviewed' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
                    {record.status === 'Reviewed' ? '✓' : '...'}
                 </div>
-                <h4 className="font-semibold text-lg">{record.status === 'Reviewed' ? '已完成覆核' : '已送出，待主管覆核'}</h4>
+                <h4 className="font-semibold text-lg">{record.status === 'Reviewed' ? '已完成覆核' : '✅ 完成填寫！待主管覆核'}</h4>
                 <p className="text-sm text-slate-500 mt-2 text-center">
                   {record.status === 'Reviewed' ? '主管已完成您的 AI 職能覆核作業。' : '評核資料已經成功送出，請靜待主管檢查。'}
                 </p>
