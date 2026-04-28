@@ -1,0 +1,218 @@
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { dataService } from '../services/dataService';
+import { AssessmentData, AssessmentRecord, AssessmentScores } from '../types';
+
+export default function EmployeeDashboard() {
+  const { currentUser, logout } = useAuth();
+  const [record, setRecord] = useState<AssessmentRecord | undefined>();
+  
+  const [tools, setTools] = useState('');
+  const [frequency, setFrequency] = useState('每週多次');
+  const [scores, setScores] = useState<AssessmentScores>({
+    textGeneration: 3, contentOrganization: 3,
+    workEfficiency: 3, processOptimization: 3,
+    analysis: 3, decisionSupport: 3,
+    ideaGeneration: 3, professionalApplication: 3,
+    structureDesign: 3, botConstruction: 3
+  });
+  const [evidenceDesc, setEvidenceDesc] = useState('');
+  const [evidenceLink, setEvidenceLink] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (currentUser) {
+      const existing = dataService.getAssessmentByEmail(currentUser.email);
+      if (existing) {
+        setRecord(existing);
+        if (existing.data) {
+          setTools(existing.data.tools);
+          setFrequency(existing.data.frequency);
+          setScores(existing.data.scores);
+          setEvidenceDesc(existing.data.evidenceDesc);
+          setEvidenceLink(existing.data.evidenceLink);
+        }
+      }
+    }
+  }, [currentUser]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser) return;
+    setSubmitting(true);
+
+    const computed = dataService.computeAssessment(scores);
+    const data: AssessmentData = {
+      tools, frequency, scores, evidenceDesc, evidenceLink
+    };
+
+    const newRecord: AssessmentRecord = {
+      userEmail: currentUser.email,
+      status: 'Submitted',
+      submittedAt: new Date().toISOString(),
+      data,
+      computed,
+      // Retain supervisor review if exists
+      supervisorReview: record?.supervisorReview
+    };
+
+    dataService.saveAssessment(newRecord);
+    setRecord(newRecord);
+    setSubmitting(false);
+  };
+
+  const renderSlider = (label: string, field: keyof AssessmentScores, desc: string) => (
+    <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 flex flex-col justify-between">
+      <div>
+        <div className="flex justify-between items-center mb-1">
+          <label className="text-sm font-semibold text-slate-800">{label}</label>
+          <span className="text-blue-600 font-bold">{scores[field]}</span>
+        </div>
+        <p className="text-xs text-slate-500 mb-3">{desc}</p>
+      </div>
+      <input 
+        type="range" min="1" max="5" step="1"
+        value={scores[field]}
+        disabled={record?.status === 'Reviewed'}
+        onChange={(e) => setScores({ ...scores, [field]: parseInt(e.target.value) })}
+        className="w-full accent-blue-600 cursor-pointer"
+      />
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-end border-b border-slate-200 pb-4">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-800">員工自評區</h2>
+          <p className="text-sm text-slate-500 mt-1">哈囉, {currentUser?.name} ({currentUser?.title})</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Left: Input Form */}
+        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+          <form onSubmit={handleSubmit} className="space-y-8">
+            
+            {/* Base info */}
+            <div>
+              <h3 className="text-lg font-semibold text-slate-800 mb-4 border-l-4 border-blue-500 pl-2">1. 常用工具與頻率</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">常用 AI 工具名稱</label>
+                  <input type="text" value={tools} onChange={e => setTools(e.target.value)} disabled={record?.status === 'Reviewed'}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                    placeholder="例如：ChatGPT, Claude, Midjourney" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">使用頻率</label>
+                  <select value={frequency} onChange={e => setFrequency(e.target.value)} disabled={record?.status === 'Reviewed'}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none">
+                    <option>每天多次</option>
+                    <option>每天一次</option>
+                    <option>每週多次</option>
+                    <option>每月幾次</option>
+                    <option>幾乎不用</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* 10 Indicators */}
+            <div>
+              <h3 className="text-lg font-semibold text-slate-800 mb-4 border-l-4 border-blue-500 pl-2">2. 十項能力指標自評 (1~5分)</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {renderSlider('文字生成', 'textGeneration', '能運用 AI 快速生成草稿或文案')}
+                {renderSlider('內容整理', 'contentOrganization', '能請 AI 摘要、整理會議紀錄與長文')}
+                {renderSlider('工作提效', 'workEfficiency', '利用 AI 節省日常瑣碎工作時間')}
+                {renderSlider('流程優化', 'processOptimization', '改變既有工作流程，融入 AI 輔助')}
+                {renderSlider('分析判讀', 'analysis', '讓 AI 協助分析報表、數據或競品')}
+                {renderSlider('決策支援', 'decisionSupport', '依靠 AI 提供的見解進行決策判斷')}
+                {renderSlider('創意生成', 'ideaGeneration', '透過 AI 發想行銷點子、活動企劃')}
+                {renderSlider('專業應用', 'professionalApplication', '在程式、設計等專業領域深度使用')}
+                {renderSlider('結構設計', 'structureDesign', '能系統化地建立 Prompt 系統或框架')}
+                {renderSlider('機器人建置', 'botConstruction', '串接 API 建立企業專屬 AI Bot')}
+              </div>
+            </div>
+
+            {/* Evidence */}
+            <div>
+              <h3 className="text-lg font-semibold text-slate-800 mb-4 border-l-4 border-blue-500 pl-2">3. 成果與證據 (選填，若需提升至 A/B 級則必填)</h3>
+              <p className="text-xs text-slate-500 mb-3 -mt-3">A/B 級須至少附 1 項可回放證據（如無成果證明，最高評為 C 級）</p>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">量化成效說明</label>
+                  <textarea value={evidenceDesc} onChange={e => setEvidenceDesc(e.target.value)} disabled={record?.status === 'Reviewed'}
+                    className="w-full h-24 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                    placeholder="描述具體成效，如：節省每週工時 5 小時、品質提升... 等等" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">相關連結 / 附件位置</label>
+                  <input type="text" value={evidenceLink} onChange={e => setEvidenceLink(e.target.value)} disabled={record?.status === 'Reviewed'}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                    placeholder="您的產出檔案連結、SOP 連結或對話記錄分享" />
+                </div>
+              </div>
+            </div>
+
+            {record?.status !== 'Reviewed' && (
+              <div className="flex justify-end">
+                <button type="submit" disabled={submitting}
+                  className="px-6 py-2 bg-slate-900 text-white rounded-md font-semibold hover:bg-slate-800 disabled:opacity-50">
+                  送出評核
+                </button>
+              </div>
+            )}
+            
+            {record?.status === 'Reviewed' && (
+              <div className="bg-yellow-50 text-yellow-800 p-4 rounded-md text-sm">
+                您的評核主管已覆核，無法再修改。
+              </div>
+            )}
+          </form>
+        </div>
+
+        {/* Right: Results / Status */}
+        <div className="lg:col-span-1 space-y-6">
+          {record ? (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+              <h3 className="text-lg font-semibold text-slate-800 mb-4 text-center">評核狀態</h3>
+              
+              <div className="flex flex-col items-center justify-center py-6 border-b border-slate-100">
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 text-2xl ${record.status === 'Reviewed' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
+                   {record.status === 'Reviewed' ? '✓' : '...'}
+                </div>
+                <h4 className="font-semibold text-lg">{record.status === 'Reviewed' ? '已完成覆核' : '已送出，待主管覆核'}</h4>
+                <p className="text-sm text-slate-500 mt-2 text-center">
+                  {record.status === 'Reviewed' ? '主管已完成您的 AI 職能覆核作業。' : '評核資料已經成功送出，請靜待主管檢查。'}
+                </p>
+              </div>
+
+              {record.supervisorReview && (
+                <div className="mt-6 pt-4 border-t border-slate-200">
+                  <h4 className="font-semibold text-slate-800 mb-4">主管覆核結果</h4>
+                  <div className="bg-slate-50 p-4 rounded-lg space-y-2">
+                    <div className="flex justify-between items-center text-sm mb-3">
+                      <span className="text-slate-500">最終評級</span>
+                      <span className="font-bold text-blue-600 text-2xl">{record.supervisorReview.finalGrade} 級</span>
+                    </div>
+                    <div className="pt-2 border-t border-slate-200 mt-2">
+                      <span className="block text-xs text-slate-500 mb-1 mt-2">主管評語:</span>
+                      <p className="text-sm text-slate-700">{record.supervisorReview.comments || '無'}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="bg-slate-50 rounded-xl border border-dashed border-slate-300 p-8 flex flex-col items-center justify-center text-center text-slate-500">
+               尚未送出評核<br/><span className="text-xs mt-2">填寫送出後即可檢視狀態</span>
+            </div>
+          )}
+        </div>
+
+      </div>
+    </div>
+  );
+}
