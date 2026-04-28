@@ -20,20 +20,35 @@ export default function EmployeeDashboard() {
   const [evidenceLink, setEvidenceLink] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (currentUser) {
-      const existing = dataService.getAssessmentByEmail(currentUser.email);
-      if (existing) {
-        setRecord(existing);
-        if (existing.data) {
-          setTools(existing.data.tools);
-          setFrequency(existing.data.frequency);
-          setScores(existing.data.scores);
-          setEvidenceDesc(existing.data.evidenceDesc);
-          setEvidenceLink(existing.data.evidenceLink);
+    const loadData = () => {
+      if (currentUser) {
+        const existing = dataService.getAssessmentByEmail(currentUser.email);
+        if (existing) {
+          setRecord(existing);
+          if (existing.data) {
+            setTools(existing.data.tools);
+            setFrequency(existing.data.frequency);
+            setScores(existing.data.scores);
+            setEvidenceDesc(existing.data.evidenceDesc);
+            setEvidenceLink(existing.data.evidenceLink);
+          }
         }
       }
-    }
+    };
+
+    loadData();
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'hr_ai_assessments') loadData();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    const interval = setInterval(loadData, 2000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
   }, [currentUser]);
 
   const handleSubmit = (e: React.FormEvent) => {

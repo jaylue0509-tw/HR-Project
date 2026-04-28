@@ -18,7 +18,32 @@ export default function SupervisorDashboard() {
     if (currentUser) {
       loadTeam();
     }
-  }, [currentUser]);
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'hr_ai_assessments' || e.key === 'hr_ai_users') {
+        if (currentUser) loadTeam();
+      }
+    };
+    
+    // Also listen to custom event for same-tab updates if needed
+    const handleCustomChange = () => {
+       if (currentUser) loadTeam();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('hr_data_changed', handleCustomChange);
+    
+    // Initial load interval as a fallback for strict real-time feel
+    const interval = setInterval(() => {
+       if (currentUser) loadTeam();
+    }, 2000);
+
+    return () => {
+       window.removeEventListener('storage', handleStorageChange);
+       window.removeEventListener('hr_data_changed', handleCustomChange);
+       clearInterval(interval);
+    };
+  }, [currentUser, users]);
 
   const loadTeam = () => {
     const team = users.filter(u => u.supervisorEmail === currentUser?.email);
