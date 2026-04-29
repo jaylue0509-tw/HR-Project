@@ -3,23 +3,19 @@ import { User, AssessmentRecord, AssessmentData, AssessmentComputed, SupervisorR
 const USERS_KEY = 'hr_ai_users';
 const ASSESSMENTS_KEY = 'hr_ai_assessments';
 
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwKTvO5qO6tNfksfnL6bvcI95y_ulGB1w4N6hwzWESHig1UnQcTspxMr-dm5KFIrhXD/exec';
+
 export const dataService = {
   initFromBackend: async () => {
     try {
-      const [uRes, aRes] = await Promise.all([
-        fetch('/api/users'),
-        fetch('/api/assessments')
-      ]);
-      if (uRes.ok) {
-        const users = await uRes.json();
-        localStorage.setItem(USERS_KEY, JSON.stringify(users));
-      }
-      if (aRes.ok) {
-        const assessments = await aRes.json();
-        localStorage.setItem(ASSESSMENTS_KEY, JSON.stringify(assessments));
+      const res = await fetch(GAS_URL);
+      if (res.ok) {
+        const allData = await res.json();
+        if (allData.users) localStorage.setItem(USERS_KEY, JSON.stringify(allData.users));
+        if (allData.assessments) localStorage.setItem(ASSESSMENTS_KEY, JSON.stringify(allData.assessments));
       }
     } catch (e) {
-      console.error('Failed to init from backend', e);
+      console.error('Failed to init from GAS', e);
     }
   },
 
@@ -30,12 +26,12 @@ export const dataService = {
 
   setUsers: (users: User[]) => {
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
-    // Sync to backend
-    fetch('/api/users', {
+    // 同步到 GAS
+    fetch(GAS_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(users)
-    }).catch(e => console.error('Failed to sync users to backend', e));
+      mode: 'no-cors',
+      body: JSON.stringify({ action: 'syncUsers', data: users })
+    }).catch(e => console.error('Failed to sync users to GAS', e));
   },
 
   getUserByEmail(email: string): User | undefined {
@@ -59,12 +55,12 @@ export const dataService = {
       assessments.push(record);
     }
     localStorage.setItem(ASSESSMENTS_KEY, JSON.stringify(assessments));
-    // Sync to backend
-    fetch('/api/assessments', {
+    // 同步到 GAS
+    fetch(GAS_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(record)
-    }).catch(e => console.error('Failed to sync assessment to backend', e));
+      mode: 'no-cors',
+      body: JSON.stringify({ action: 'syncAssessment', data: record })
+    }).catch(e => console.error('Failed to sync assessment to GAS', e));
   },
 
   getAssessmentByEmail(email: string): AssessmentRecord | undefined {

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { HRAccount } from '../types';
 import { useAuth } from '../context/AuthContext';
 
-const API = '';
+const API = 'https://hr-project-96mr.onrender.com';
 
 export default function HRAccountManager() {
   const { hrAccount } = useAuth();
