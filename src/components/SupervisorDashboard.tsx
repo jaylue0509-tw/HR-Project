@@ -4,6 +4,8 @@ import { dataService } from '../services/dataService';
 import { User, AssessmentRecord, SupervisorReview } from '../types';
 import RadarProfile from './RadarProfile';
 import TalentProfile from './TalentProfile';
+import { aiService } from '../services/aiService';
+import { Sparkles, Loader2 } from 'lucide-react';
 
 export default function SupervisorDashboard() {
   const { currentUser, logout, users } = useAuth();
@@ -20,6 +22,7 @@ export default function SupervisorDashboard() {
   const [impactScore, setImpactScore] = useState(3);
   const [evidenceStatus, setEvidenceStatus] = useState<'Pending' | 'Approved' | 'Rejected' | 'None'>('None');
   const [comments, setComments] = useState('');
+  const [isAiLoading, setIsAiLoading] = useState(false);
 
   const loadTeam = () => {
     const team = users.filter(u => u.supervisorEmail.trim().toLowerCase() === currentUser?.email.trim().toLowerCase());
@@ -80,6 +83,19 @@ export default function SupervisorDashboard() {
       setImpactScore(3);
       setEvidenceStatus((record.data?.evidenceLink || record.data?.evidenceDesc) ? 'Pending' : 'None');
       setComments('');
+    }
+  };
+
+  const handleAiSuggest = async () => {
+    if (!selectedRecord?.data || !selectedRecord?.computed) return;
+    setIsAiLoading(true);
+    try {
+      const suggestion = await aiService.generateReviewSuggestion(selectedRecord.data, selectedRecord.computed);
+      setComments(suggestion);
+    } catch (error) {
+      alert('AI 助手暫時無法連線，請檢查 API Key 額度或稍後再試。');
+    } finally {
+      setIsAiLoading(false);
     }
   };
 
@@ -305,10 +321,21 @@ export default function SupervisorDashboard() {
                        </div>
                     </div>
 
-                     <div className="mb-4">
-                      <label className="block text-sm font-medium text-slate-700 mb-1">主管評語 (選填)</label>
-                      <textarea value={comments} onChange={e => setComments(e.target.value)} className="w-full h-16 rounded-xl bg-white/50 border border-white/60 px-4 py-3 text-sm" placeholder="建議..."></textarea>
-                    </div>
+                      <div className="mb-4">
+                       <div className="flex justify-between items-center mb-1">
+                         <label className="block text-sm font-medium text-slate-700">主管評語 (選填)</label>
+                         <button 
+                           onClick={handleAiSuggest}
+                           type="button"
+                           disabled={isAiLoading}
+                           className="flex items-center gap-1.5 text-[11px] font-bold text-indigo-600 hover:text-indigo-700 transition-colors bg-indigo-50 px-2 py-1 rounded-lg border border-indigo-100"
+                         >
+                           {isAiLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                           AI 助手建議評語
+                         </button>
+                       </div>
+                       <textarea value={comments} onChange={e => setComments(e.target.value)} className="w-full h-24 rounded-xl bg-white/50 border border-white/60 px-4 py-3 text-sm" placeholder="請輸入評語或點擊上方 AI 助手建議..."></textarea>
+                     </div>
 
                     {(() => {
                       const grade = dataService.calculateFinalGrade(selectedRecord.computed, { evidenceStatus, impactScore });
