@@ -146,9 +146,6 @@ export default function Login() {
                   required
                 />
               </div>
-              <div className="bg-blue-50/60 rounded-xl p-3 text-xs text-blue-700 border border-blue-100">
-                預設帳號：<strong>admin@hr.com</strong> / 密碼：<strong>admin1234</strong>
-              </div>
             </>
           )}
 
