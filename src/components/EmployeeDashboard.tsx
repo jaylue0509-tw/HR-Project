@@ -50,12 +50,9 @@ export default function EmployeeDashboard() {
 
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('hr_data_changed', loadData);
-    const interval = setInterval(loadData, 2000);
-
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('hr_data_changed', loadData);
-      clearInterval(interval);
     };
   }, [currentUser]);
 
