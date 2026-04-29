@@ -22,22 +22,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [hrAccount, setHrAccount] = useState<HRAccount | null>(null);
   const [users, setUsers] = useState<User[]>([]);
 
-  useEffect(() => {
-    const syncData = () => {
-      dataService.initFromBackend().then(() => {
-        refreshUsers();
-        window.dispatchEvent(new Event('hr_data_changed'));
-      });
-    };
-
-    // 初始載入
-    syncData();
-
-    // 每 15 秒自動跟 GAS 同步一次，確保能看到別人匯入或修改的資料
-    const interval = setInterval(syncData, 15000);
-
-    return () => clearInterval(interval);
+  // 直接從 GAS 抓資料並更新 React state，確保跨用戶同步
+  const syncFromGAS = React.useCallback(async () => {
+    try {
+      const res = await fetch(`${API}?t=${Date.now()}`);
+      if (!res.ok) return;
+      const allData = await res.json();
+      if (allData.users && Array.isArray(allData.users)) {
+        localStorage.setItem('hr_ai_users', JSON.stringify(allData.users));
+        setUsers(allData.users);
+      }
+      if (allData.assessments && Array.isArray(allData.assessments)) {
+        localStorage.setItem('hr_ai_assessments', JSON.stringify(allData.assessments));
+      }
+      window.dispatchEvent(new Event('hr_data_changed'));
+    } catch (e) {
+      // fallback: 讀本機快取
+      setUsers(dataService.getUsers());
+    }
   }, []);
+
+  useEffect(() => {
+    // 初始載入
+    syncFromGAS();
+
+    // 每 15 秒自動從 GAS 拉一次最新資料
+    const interval = setInterval(syncFromGAS, 15000);
+    return () => clearInterval(interval);
+  }, [syncFromGAS]);
 
   const refreshUsers = () => {
     setUsers(dataService.getUsers());
