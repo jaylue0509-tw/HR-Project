@@ -91,7 +91,7 @@ export default function EmployeeDashboard() {
     2: { label: '初學', hint: '可在他人指導下使用。' },
     3: { label: '獨立', hint: '能獨立完成日常應用。' },
     4: { label: '熟練', hint: '能熟練運用並穩定產出成果。' },
-    5: { label: '驅動', hint: '能優化方法、複製給他人、形成部門價值。' }
+    5: { label: '可複製且優化', hint: '能優化方法、複製給他人、形成部門價值。' }
   };
 
   const renderSlider = (label: string, field: keyof AssessmentScores, desc: string) => (
@@ -213,7 +213,7 @@ export default function EmployeeDashboard() {
                 {renderSlider('創意生成', 'ideaGeneration', '透過 AI 發想行銷點子、活動企劃')}
                 {renderSlider('專業應用', 'professionalApplication', '在程式、設計等專業領域深度使用')}
                 {renderSlider('結構設計', 'structureDesign', '能系統化地建立 Prompt 系統或框架')}
-                {renderSlider('機器人建置', 'botConstruction', '串接 API 建立企業專屬 AI Bot')}
+                {renderSlider('自動化建置', 'botConstruction', '能建置機器人，或已可打造自動化工作流')}
               </div>
             </div>
 
@@ -229,10 +229,10 @@ export default function EmployeeDashboard() {
                     placeholder="描述具體成效，如：節省每週工時 5 小時、品質提升... 等等" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">相關連結 / 附件位置</label>
-                  <input type="text" value={evidenceLink} onChange={e => setEvidenceLink(e.target.value)} disabled={record?.status === 'Reviewed'}
-                    className="w-full rounded-xl bg-white/50 backdrop-blur-sm border border-white/60 px-4 py-2.5 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all placeholder:text-slate-400"
-                    placeholder="您的產出檔案連結、SOP 連結或對話記錄分享" />
+                  <label className="block text-sm font-medium text-slate-700 mb-1">相關連結 / 附件位置 (可貼多個連結)</label>
+                  <textarea value={evidenceLink} onChange={e => setEvidenceLink(e.target.value)} disabled={record?.status === 'Reviewed'}
+                    className="w-full h-24 rounded-xl bg-white/50 backdrop-blur-sm border border-white/60 px-4 py-3 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all placeholder:text-slate-400"
+                    placeholder="您的產出檔案連結、SOP 連結或對話記錄分享 (一行一個連結)" />
                 </div>
               </div>
             </div>

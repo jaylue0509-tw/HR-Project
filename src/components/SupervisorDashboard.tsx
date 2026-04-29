@@ -22,7 +22,7 @@ export default function SupervisorDashboard() {
   const [comments, setComments] = useState('');
 
   const loadTeam = () => {
-    const team = users.filter(u => u.supervisorEmail === currentUser?.email);
+    const team = users.filter(u => u.supervisorEmail.trim().toLowerCase() === currentUser?.email.trim().toLowerCase());
     const assessments = dataService.getAssessments();
     
     const combined = team.map(u => {
@@ -227,14 +227,20 @@ export default function SupervisorDashboard() {
                            <div className="text-xs text-slate-500 font-medium">量化成效</div>
                            <p className="mt-1 text-slate-800">{selectedRecord.data.evidenceDesc || '未提報'}</p>
                          </div>
-                         <div>
-                           <div className="text-xs text-slate-500 font-medium">連結/附件</div>
-                           {selectedRecord.data.evidenceLink ? (
-                             <a href={selectedRecord.data.evidenceLink} target="_blank" rel="noopener noreferrer" className="mt-1 text-blue-600 hover:underline block break-all">
-                               {selectedRecord.data.evidenceLink}
-                             </a>
-                           ) : <span className="mt-1 text-slate-800 block">未提供</span>}
-                         </div>
+                          <div>
+                            <div className="text-xs text-slate-500 font-medium">連結 / 附件</div>
+                            {selectedRecord.data.evidenceLink ? (
+                              <div className="mt-1 space-y-1">
+                                {selectedRecord.data.evidenceLink.split('\n').filter(link => link.trim()).map((link, i) => (
+                                  <a key={i} href={link.trim().startsWith('http') ? link.trim() : `https://${link.trim()}`} 
+                                     target="_blank" rel="noopener noreferrer" 
+                                     className="text-blue-600 hover:underline block break-all text-[11px] bg-blue-50/50 p-1 rounded border border-blue-100">
+                                    🔗 {link.trim()}
+                                  </a>
+                                ))}
+                              </div>
+                            ) : <span className="mt-1 text-slate-800 block">未提供</span>}
+                          </div>
                          <div>
                            <div className="text-xs text-slate-500 font-medium">常用工具</div>
                            <p className="mt-1 text-slate-800">{selectedRecord.data.tools} ({selectedRecord.data.frequency})</p>
