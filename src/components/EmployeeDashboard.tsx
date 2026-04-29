@@ -89,22 +89,40 @@ export default function EmployeeDashboard() {
     }, 800);
   };
 
+  const scoreHints: Record<number, { label: string, hint: string }> = {
+    1: { label: '觀望', hint: '知道概念，幾乎不會用。' },
+    2: { label: '初學', hint: '可在他人指導下使用。' },
+    3: { label: '獨立', hint: '能獨立完成日常應用。' },
+    4: { label: '熟練', hint: '能熟練運用並穩定產出成果。' },
+    5: { label: '驅動', hint: '能優化方法、複製給他人、形成部門價值。' }
+  };
+
   const renderSlider = (label: string, field: keyof AssessmentScores, desc: string) => (
-    <div className="bg-white/50 backdrop-blur-sm p-4 rounded-xl border border-white/60 shadow-sm flex flex-col justify-between">
+    <div className="bg-white/50 backdrop-blur-sm p-4 rounded-xl border border-white/60 shadow-sm flex flex-col justify-between group">
       <div>
         <div className="flex justify-between items-center mb-1">
           <label className="text-sm font-semibold text-slate-800">{label}</label>
-          <span className="text-blue-600 font-bold">{scores[field]}</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded-md font-medium">
+              {scoreHints[scores[field]].label}
+            </span>
+            <span className="text-blue-600 font-bold">{scores[field]}</span>
+          </div>
         </div>
-        <p className="text-xs text-slate-500 mb-3">{desc}</p>
+        <p className="text-[11px] leading-relaxed text-slate-500 mb-2">{desc}</p>
       </div>
-      <input 
-        type="range" min="1" max="5" step="1"
-        value={scores[field]}
-        disabled={record?.status === 'Reviewed'}
-        onChange={(e) => setScores({ ...scores, [field]: parseInt(e.target.value) })}
-        className="w-full accent-blue-600 cursor-pointer"
-      />
+      <div className="mt-auto">
+        <input 
+          type="range" min="1" max="5" step="1"
+          value={scores[field]}
+          disabled={record?.status === 'Reviewed'}
+          onChange={(e) => setScores({ ...scores, [field]: parseInt(e.target.value) })}
+          className="w-full accent-blue-600 cursor-pointer h-1.5 bg-slate-200 rounded-lg appearance-none"
+        />
+        <p className="text-[10px] text-blue-500/80 mt-1.5 font-medium min-h-[15px] italic">
+          💡 {scoreHints[scores[field]].hint}
+        </p>
+      </div>
     </div>
   );
 
@@ -178,7 +196,16 @@ export default function EmployeeDashboard() {
 
             {/* 10 Indicators */}
             <div>
-              <h3 className="text-lg font-semibold text-slate-800 mb-4 border-l-4 border-blue-500 pl-2">2. 十項能力指標自評 (1~5分)</h3>
+              <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-2">
+                <h3 className="text-lg font-semibold text-slate-800 border-l-4 border-blue-500 pl-2">2. 十項能力指標自評 (1~5分)</h3>
+                <div className="flex flex-wrap gap-2 text-[10px]">
+                  {Object.entries(scoreHints).map(([val, info]) => (
+                    <div key={val} className="bg-white/80 px-2 py-1 rounded border border-slate-100 shadow-sm">
+                      <span className="font-bold text-blue-600">{val}分</span> {info.label}
+                    </div>
+                  ))}
+                </div>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 {renderSlider('文字生成', 'textGeneration', '能運用 AI 快速生成草稿或文案')}
                 {renderSlider('內容整理', 'contentOrganization', '能請 AI 摘要、整理會議紀錄與長文')}
