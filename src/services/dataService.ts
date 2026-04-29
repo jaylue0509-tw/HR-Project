@@ -8,7 +8,8 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbw6OUWRFp-kVAkPXPuDHge_
 export const dataService = {
   initFromBackend: async () => {
     try {
-      const res = await fetch(GAS_URL);
+      // 加上時間戳防止瀏覽器快取舊資料
+      const res = await fetch(`${GAS_URL}?t=${new Date().getTime()}`);
       if (res.ok) {
         const allData = await res.json();
         if (allData.users) localStorage.setItem(USERS_KEY, JSON.stringify(allData.users));

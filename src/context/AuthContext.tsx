@@ -23,9 +23,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
-    dataService.initFromBackend().then(() => {
-      refreshUsers();
-    });
+    const syncData = () => {
+      dataService.initFromBackend().then(() => {
+        refreshUsers();
+        window.dispatchEvent(new Event('hr_data_changed'));
+      });
+    };
+
+    // 初始載入
+    syncData();
+
+    // 每 15 秒自動跟 GAS 同步一次，確保能看到別人匯入或修改的資料
+    const interval = setInterval(syncData, 15000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const refreshUsers = () => {

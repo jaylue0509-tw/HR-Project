@@ -25,10 +25,11 @@ export default function SupervisorDashboard() {
     const team = users.filter(u => u.supervisorEmail === currentUser?.email);
     const assessments = dataService.getAssessments();
     
-    const combined = team.map(u => ({
-      user: u,
-      record: assessments.find(a => a.userEmail === u.email)
-    }));
+    const combined = team.map(u => {
+      // 確保 record 擁有完整的 data 和 computed，若為空（可能是舊版資料或被手動刪除），則視為未填寫
+      const record = assessments.find(a => a.userEmail === u.email && a.data && a.computed);
+      return { user: u, record };
+    });
     
     setTeamRecords(combined);
   };
