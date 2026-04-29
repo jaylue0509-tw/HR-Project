@@ -102,9 +102,12 @@ export default function SupervisorDashboard() {
       supervisorReview: review
     };
 
-    dataService.saveAssessment(updatedRecord);
-    setSelectedRecord(null);
-    loadTeam();
+    dataService.saveAssessment(updatedRecord).then(() => {
+      setSelectedRecord(null);
+      loadTeam();
+    }).catch(() => {
+      alert('提交覆核失敗，請檢查網路連線。');
+    });
   };
 
   const companies = Array.from(new Set(teamRecords.map(t => t.user.company))).filter(Boolean);

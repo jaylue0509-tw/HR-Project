@@ -45,10 +45,14 @@ export default function HRDashboard() {
           importedUsers.forEach(u => userMap.set(u.email, u));
           const mergedUsers = Array.from(userMap.values());
 
-          dataService.setUsers(mergedUsers);
-          refreshUsers();
-          setMsg(`成功合併導入 ${importedUsers.length} 筆資料！總共 ${mergedUsers.length} 筆員工。`);
-          setCsvText('');
+          setMsg('同步資料中...');
+          dataService.setUsers(mergedUsers).then(() => {
+            refreshUsers();
+            setMsg(`成功合併導入 ${importedUsers.length} 筆資料！總共 ${mergedUsers.length} 筆員工。`);
+            setCsvText('');
+          }).catch(() => {
+            setMsg('同步至後台失敗，請檢查網路連線。');
+          });
         } catch (e) {
           setMsg('解析失敗，請確認欄位名稱。');
         }
@@ -92,10 +96,14 @@ export default function HRDashboard() {
         importedUsers.forEach(u => userMap.set(u.email, u));
         const mergedUsers = Array.from(userMap.values());
 
-        dataService.setUsers(mergedUsers);
-        refreshUsers();
-        setMsg(`成功合併導入 ${importedUsers.length} 筆資料！總共 ${mergedUsers.length} 筆員工。`);
-        if (fileInputRef.current) fileInputRef.current.value = '';
+        setMsg('同步資料中...');
+        dataService.setUsers(mergedUsers).then(() => {
+          refreshUsers();
+          setMsg(`成功合併導入 ${importedUsers.length} 筆資料！總共 ${mergedUsers.length} 筆員工。`);
+          if (fileInputRef.current) fileInputRef.current.value = '';
+        }).catch(() => {
+          setMsg('同步至後台失敗，請檢查網路連線。');
+        });
       } catch (err) {
         setMsg('Excel 解析失敗，請確認檔案格式與欄位名稱。');
       }

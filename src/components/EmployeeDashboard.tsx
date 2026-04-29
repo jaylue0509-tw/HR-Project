@@ -76,14 +76,14 @@ export default function EmployeeDashboard() {
       supervisorReview: record?.supervisorReview
     };
 
-    dataService.saveAssessment(newRecord);
-    setRecord(newRecord);
-    
-    // Simulate API delay
-    setTimeout(() => {
+    dataService.saveAssessment(newRecord).then(() => {
+      setRecord(newRecord);
       setSubmitting(false);
       window.dispatchEvent(new Event('hr_data_changed'));
-    }, 800);
+    }).catch(() => {
+      alert('同步至後台失敗，請檢查網路連線。');
+      setSubmitting(false);
+    });
   };
 
   const scoreHints: Record<number, { label: string, hint: string }> = {

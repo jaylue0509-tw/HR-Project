@@ -25,14 +25,19 @@ export const dataService = {
     return data ? JSON.parse(data) : [];
   },
 
-  setUsers: (users: User[]) => {
+  setUsers: async (users: User[]) => {
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
     // 同步到 GAS
-    fetch(GAS_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      body: JSON.stringify({ action: 'syncUsers', data: users })
-    }).catch(e => console.error('Failed to sync users to GAS', e));
+    try {
+      await fetch(GAS_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        body: JSON.stringify({ action: 'syncUsers', data: users })
+      });
+    } catch (e) {
+      console.error('Failed to sync users to GAS', e);
+      throw e;
+    }
   },
 
   getUserByEmail(email: string): User | undefined {
@@ -46,7 +51,7 @@ export const dataService = {
     return data ? JSON.parse(data) : [];
   },
 
-  saveAssessment: (record: AssessmentRecord) => {
+  saveAssessment: async (record: AssessmentRecord) => {
     const raw = localStorage.getItem(ASSESSMENTS_KEY);
     const assessments: AssessmentRecord[] = raw ? JSON.parse(raw) : [];
     const index = assessments.findIndex(a => a.userEmail === record.userEmail);
@@ -57,11 +62,16 @@ export const dataService = {
     }
     localStorage.setItem(ASSESSMENTS_KEY, JSON.stringify(assessments));
     // 同步到 GAS
-    fetch(GAS_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      body: JSON.stringify({ action: 'syncAssessment', data: record })
-    }).catch(e => console.error('Failed to sync assessment to GAS', e));
+    try {
+      await fetch(GAS_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        body: JSON.stringify({ action: 'syncAssessment', data: record })
+      });
+    } catch (e) {
+      console.error('Failed to sync assessment to GAS', e);
+      throw e;
+    }
   },
 
   getAssessmentByEmail(email: string): AssessmentRecord | undefined {

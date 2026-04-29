@@ -12,6 +12,9 @@ interface AuthContextType {
   logout: () => void;
   users: User[];
   refreshUsers: () => void;
+  syncFromGAS: () => Promise<void>;
+  lastSyncTime: Date | null;
+  syncStatus: 'idle' | 'loading' | 'error';
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -20,13 +23,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentRole, setCurrentRole] = useState<Role | null>(null);
   const [hrAccount, setHrAccount] = useState<HRAccount | null>(null);
-  const [users, setUsers] = useState<User[]>([]);
+   const [users, setUsers] = useState<User[]>([]);
+   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+   const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'error'>('idle');
 
   // 直接從 GAS 抓資料並更新 React state，確保跨用戶同步
   const syncFromGAS = React.useCallback(async () => {
+    setSyncStatus('loading');
     try {
       const res = await fetch(`${API}?t=${Date.now()}`);
-      if (!res.ok) return;
+      if (!res.ok) {
+        setSyncStatus('error');
+        return;
+      }
       const allData = await res.json();
       if (allData.users && Array.isArray(allData.users)) {
         localStorage.setItem('hr_ai_users', JSON.stringify(allData.users));
@@ -35,8 +44,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (allData.assessments && Array.isArray(allData.assessments)) {
         localStorage.setItem('hr_ai_assessments', JSON.stringify(allData.assessments));
       }
+      setLastSyncTime(new Date());
+      setSyncStatus('idle');
       window.dispatchEvent(new Event('hr_data_changed'));
     } catch (e) {
+      console.error('Sync failed', e);
+      setSyncStatus('error');
       // fallback: 讀本機快取
       setUsers(dataService.getUsers());
     }
@@ -116,7 +129,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ currentUser, currentRole, hrAccount, login, logout, users, refreshUsers }}>
+    <AuthContext.Provider value={{ 
+      currentUser, currentRole, hrAccount, login, logout, users, refreshUsers, 
+      syncFromGAS, lastSyncTime, syncStatus 
+    }}>
       {children}
     </AuthContext.Provider>
   );
