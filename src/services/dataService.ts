@@ -3,7 +3,7 @@ import { User, AssessmentRecord, AssessmentData, AssessmentComputed, SupervisorR
 const USERS_KEY = 'hr_ai_users';
 const ASSESSMENTS_KEY = 'hr_ai_assessments';
 
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbwKTvO5qO6tNfksfnL6bvcI95y_ulGB1w4N6hwzWESHig1UnQcTspxMr-dm5KFIrhXD/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbw6OUWRFp-kVAkPXPuDHge_-DZipaGjsCYtQ_VQpuF1KF5D7exquAjCI31lDN5K1ly0/exec';
 
 export const dataService = {
   initFromBackend: async () => {
