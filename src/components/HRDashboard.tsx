@@ -38,9 +38,16 @@ export default function HRDashboard() {
             return;
           }
 
-          dataService.setUsers(importedUsers);
+          // 取得現有使用者並與新資料合併（以 email 為唯一鍵值）
+          const existingUsers = dataService.getUsers();
+          const userMap = new Map<string, User>();
+          existingUsers.forEach(u => userMap.set(u.email, u));
+          importedUsers.forEach(u => userMap.set(u.email, u));
+          const mergedUsers = Array.from(userMap.values());
+
+          dataService.setUsers(mergedUsers);
           refreshUsers();
-          setMsg(`成功從 CSV 導入 ${importedUsers.length} 筆員工資料！`);
+          setMsg(`成功合併導入 ${importedUsers.length} 筆資料！總共 ${mergedUsers.length} 筆員工。`);
           setCsvText('');
         } catch (e) {
           setMsg('解析失敗，請確認欄位名稱。');
@@ -78,9 +85,16 @@ export default function HRDashboard() {
           return;
         }
 
-        dataService.setUsers(importedUsers);
+        // 取得現有使用者並與新資料合併（以 email 為唯一鍵值）
+        const existingUsers = dataService.getUsers();
+        const userMap = new Map<string, User>();
+        existingUsers.forEach(u => userMap.set(u.email, u));
+        importedUsers.forEach(u => userMap.set(u.email, u));
+        const mergedUsers = Array.from(userMap.values());
+
+        dataService.setUsers(mergedUsers);
         refreshUsers();
-        setMsg(`成功從 Excel 導入 ${importedUsers.length} 筆員工資料！`);
+        setMsg(`成功合併導入 ${importedUsers.length} 筆資料！總共 ${mergedUsers.length} 筆員工。`);
         if (fileInputRef.current) fileInputRef.current.value = '';
       } catch (err) {
         setMsg('Excel 解析失敗，請確認檔案格式與欄位名稱。');
