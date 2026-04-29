@@ -1,11 +1,14 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { User, Role } from '../types';
+import { User, Role, HRAccount } from '../types';
 import { dataService } from '../services/dataService';
+
+const API = '';
 
 interface AuthContextType {
   currentUser: User | null;
   currentRole: Role | null;
-  login: (email: string, role: Role) => boolean;
+  hrAccount: HRAccount | null;
+  login: (email: string, role: Role, password?: string) => Promise<boolean>;
   logout: () => void;
   users: User[];
   refreshUsers: () => void;
@@ -16,6 +19,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentRole, setCurrentRole] = useState<Role | null>(null);
+  const [hrAccount, setHrAccount] = useState<HRAccount | null>(null);
   const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
@@ -28,11 +32,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUsers(dataService.getUsers());
   };
 
-  const login = (email: string, role: Role) => {
+  const login = async (email: string, role: Role, password?: string): Promise<boolean> => {
     if (role === 'HR') {
-      setCurrentRole('HR');
-      setCurrentUser(null);
-      return true;
+      try {
+        const res = await fetch(`${API}/api/hr/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        if (!res.ok) return false;
+        const account: HRAccount = await res.json();
+        setHrAccount(account);
+        setCurrentRole('HR');
+        setCurrentUser(null);
+        return true;
+      } catch {
+        return false;
+      }
     }
 
     const user = dataService.getUserByEmail(email);
@@ -42,9 +58,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return true;
     }
     
-    // For supervisor, maybe they are just recognized by user records
-    // where they are listed as supervisor. If email doesn't strictly match a user but they want to login as supervisor,
-    // we can mock a user or just query if any user has them as supervisor
     const asSupervisor = dataService.getUsers().find(u => u.supervisorEmail === email);
     if (role === 'Supervisor' && asSupervisor) {
       setCurrentUser({
@@ -62,10 +75,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setCurrentUser(null);
     setCurrentRole(null);
+    setHrAccount(null);
   };
 
   return (
-    <AuthContext.Provider value={{ currentUser, currentRole, login, logout, users, refreshUsers }}>
+    <AuthContext.Provider value={{ currentUser, currentRole, hrAccount, login, logout, users, refreshUsers }}>
       {children}
     </AuthContext.Provider>
   );

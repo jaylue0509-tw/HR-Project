@@ -5,12 +5,13 @@ import { User, AssessmentRecord } from '../types';
 import { dataService } from '../services/dataService';
 import { useAuth } from '../context/AuthContext';
 import RadarProfile from './RadarProfile';
+import HRAccountManager from './HRAccountManager';
 
 export default function HRDashboard() {
-  const { refreshUsers, users } = useAuth();
+  const { refreshUsers, users, hrAccount, logout } = useAuth();
   const [csvText, setCsvText] = useState('');
   const [msg, setMsg] = useState('');
-  const [activeTab, setActiveTab] = useState<'import' | 'overview'>('import');
+  const [activeTab, setActiveTab] = useState<'import' | 'overview' | 'accounts'>('import');
 
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<AssessmentRecord | undefined>(undefined);
@@ -23,13 +24,13 @@ export default function HRDashboard() {
       complete: (results) => {
         try {
           const importedUsers: User[] = results.data.map((row: any) => ({
-            company: row['公司'] || row['Company'] || '',
-            department: row['部門'] || row['Department'] || '',
-            name: row['姓名'] || row['Name'] || '',
-            title: row['職稱'] || row['Title'] || '',
-            email: (row['Email'] || row['EMAIL'] || row['email'] || '').trim(),
-            supervisorName: row['主管姓名'] || row['主管'] || row['Supervisor'] || '',
-            supervisorEmail: (row['主管Email'] || row['主管EMAIL'] || row['supervisorEmail'] || '').trim(),
+            company: row['公司別'] || row['公司'] || row['Company'] || '',
+            department: row['部門中文名稱'] || row['部門'] || row['Department'] || '',
+            name: row['中文姓名'] || row['姓名'] || row['Name'] || '',
+            title: row['職務中文名稱'] || row['職稱'] || row['Title'] || '',
+            email: (row['e-Mail帳號'] || row['e-mail帳號'] || row['Email'] || row['EMAIL'] || row['email'] || '').trim(),
+            supervisorName: row['主管'] || row['主管姓名'] || row['Supervisor'] || '',
+            supervisorEmail: (row['主管 e-Mail帳號'] || row['主管 e-mail帳號'] || row['主管Email'] || row['主管EMAIL'] || row['supervisorEmail'] || '').trim(),
           }));
           
           if (importedUsers.length === 0 || !importedUsers[0].email) {
@@ -63,13 +64,13 @@ export default function HRDashboard() {
         const jsonData = XLSX.utils.sheet_to_json(ws);
         
         const importedUsers: User[] = jsonData.map((row: any) => ({
-          company: row['公司'] || row['Company'] || '',
-          department: row['部門'] || row['Department'] || '',
-          name: row['姓名'] || row['Name'] || '',
-          title: row['職稱'] || row['Title'] || '',
-          email: (row['Email'] || row['EMAIL'] || row['email'] || '').trim(),
-          supervisorName: row['主管姓名'] || row['主管'] || row['Supervisor'] || '',
-          supervisorEmail: (row['主管Email'] || row['主管EMAIL'] || row['supervisorEmail'] || '').trim(),
+          company: row['公司別'] || row['公司'] || row['Company'] || '',
+          department: row['部門中文名稱'] || row['部門'] || row['Department'] || '',
+          name: row['中文姓名'] || row['姓名'] || row['Name'] || '',
+          title: row['職務中文名稱'] || row['職稱'] || row['Title'] || '',
+          email: (row['e-Mail帳號'] || row['e-mail帳號'] || row['Email'] || row['EMAIL'] || row['email'] || '').trim(),
+          supervisorName: row['主管'] || row['主管姓名'] || row['Supervisor'] || '',
+          supervisorEmail: (row['主管 e-Mail帳號'] || row['主管 e-mail帳號'] || row['主管Email'] || row['主管EMAIL'] || row['supervisorEmail'] || '').trim(),
         }));
 
         if (importedUsers.length === 0 || !importedUsers[0].email) {
@@ -88,12 +89,9 @@ export default function HRDashboard() {
     reader.readAsArrayBuffer(file);
   };
 
-  const sampleCsv = `公司,部門,姓名,職稱,Email,主管姓名,主管Email
-A公司,行銷部,王大明,專員,ming@test.com,李主管,lee@test.com
-A公司,行銷部,陳小華,企劃,hua@test.com,李主管,lee@test.com
-B公司,資訊部,張大智,工程師,zhi@test.com,趙主管,zhao@test.com
-B公司,資訊部,林小美,設計師,mei@test.com,趙主管,zhao@test.com
-B公司,人資部,周小黑,專員,hei@test.com,黃主管,huang@test.com`;
+  const sampleCsv = `序號,公司別,部門中文名稱,員工編號,中文姓名,職務中文名稱,e-Mail帳號,主管,主管 e-Mail帳號
+3,東森得易購,人資行政部人力資源處,A6I,曾慈君,人資專員,abin.tseng@ehsn.com.tw,呂紹君,f1665@ettoday.net
+4,東森新媒體,管理部人資處,30573,黃乙軫,副理,sandy.bfc@ettoday.net,呂紹君,f1665@ettoday.net`;
 
   const handleSelectUser = (u: User) => {
     setSelectedUser(u);
@@ -103,7 +101,18 @@ B公司,人資部,周小黑,專員,hei@test.com,黃主管,huang@test.com`;
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center mb-2">
-        <h2 className="text-2xl font-bold tracking-tight text-slate-800">HR 管理控制台</h2>
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-800">HR 管理控制台</h2>
+          <p className="text-sm text-slate-500 mt-1">
+            登入身分：<strong>{hrAccount?.name}</strong>
+            <span className="ml-3 space-x-2">
+              {hrAccount?.canImport ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700">✓ 可導入</span> : null}
+              {hrAccount?.canExport ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">✓ 可匯出</span> : null}
+              {hrAccount?.canManageAccounts ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">✓ 管理員</span> : null}
+            </span>
+          </p>
+        </div>
+        <button onClick={logout} className="text-slate-500 hover:text-slate-800 font-medium text-sm transition-colors">登出</button>
       </div>
 
       <div className="flex space-x-4 border-b border-slate-200">
@@ -123,15 +132,33 @@ B公司,人資部,周小黑,專員,hei@test.com,黃主管,huang@test.com`;
         >
           2. 全公司評核總覽
         </button>
+        {hrAccount?.canManageAccounts ? (
+          <button
+            onClick={() => setActiveTab('accounts')}
+            className={`py-2 px-4 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'accounts' ? 'border-purple-600 text-purple-600' : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            3. 帳號管理 🔐
+          </button>
+        ) : null}
       </div>
 
       {activeTab === 'import' && (
+        !hrAccount?.canImport ? (
+          <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+            <span className="text-5xl mb-4">🔒</span>
+            <p className="text-lg font-semibold">您的帳號沒有資料導入權限</p>
+            <p className="text-sm mt-2">請聯絡管理員開通此功能</p>
+          </div>
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in">
           <div className="bg-white/40 backdrop-blur-xl p-6 rounded-2xl border border-white/60 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)]">
             <h3 className="text-lg font-semibold text-slate-800 mb-4">資料導入區</h3>
             <p className="text-sm text-slate-500 mb-4">
-              請貼上 CSV 格式內容，必須包含以下欄位：<br/>
-              <code>公司, 部門, 姓名, 職稱, Email, 主管姓名, 主管Email</code>
+              請貼上 CSV 格式內容，或使用 Excel 檔案匯入。<br/>
+              對應欄位名稱：（包含即可，多的欄位如「序號、員工編號」會自動略過）<br/>
+              <code>公司別, 部門中文名稱, 中文姓名, 職務中文名稱, e-Mail帳號, 主管, 主管 e-Mail帳號</code>
             </p>
             <textarea
               value={csvText}
@@ -185,6 +212,8 @@ B公司,人資部,周小黑,專員,hei@test.com,黃主管,huang@test.com`;
                          data: {
                            tools: idx % 2 === 0 ? 'ChatGPT, Claude' : 'Midjourney, Stable Diffusion',
                            frequency: idx % 2 === 0 ? '每天多次' : '每週幾次',
+                           botNames: idx % 2 === 0 ? 'HR助理, 週報小幫手' : '',
+                           botCount: idx % 2 === 0 ? 2 : 0,
                            scores,
                            evidenceDesc: '優化流程，提升效率 20%',
                            evidenceLink: 'https://example.com/evidence'
@@ -256,6 +285,7 @@ B公司,人資部,周小黑,專員,hei@test.com,黃主管,huang@test.com`;
             </div>
           </div>
         </div>
+        )
       )}
 
       {activeTab === 'overview' && (
@@ -393,6 +423,9 @@ B公司,人資部,周小黑,專員,hei@test.com,黃主管,huang@test.com`;
             )}
           </div>
         </div>
+      )}
+      {activeTab === 'accounts' && (
+        <HRAccountManager />
       )}
     </div>
   );

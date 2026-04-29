@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { dataService } from '../services/dataService';
 import { AssessmentData, AssessmentRecord, AssessmentScores } from '../types';
+import TalentProfile from './TalentProfile';
 
 export default function EmployeeDashboard() {
   const { currentUser, logout } = useAuth();
@@ -9,6 +10,8 @@ export default function EmployeeDashboard() {
   
   const [tools, setTools] = useState('');
   const [frequency, setFrequency] = useState('每週多次');
+  const [botNames, setBotNames] = useState('');
+  const [botCount, setBotCount] = useState<number>(0);
   const [scores, setScores] = useState<AssessmentScores>({
     textGeneration: 3, contentOrganization: 3,
     workEfficiency: 3, processOptimization: 3,
@@ -29,6 +32,8 @@ export default function EmployeeDashboard() {
           if (existing.data) {
             setTools(existing.data.tools);
             setFrequency(existing.data.frequency);
+            setBotNames(existing.data.botNames || '');
+            setBotCount(existing.data.botCount || 0);
             setScores(existing.data.scores);
             setEvidenceDesc(existing.data.evidenceDesc);
             setEvidenceLink(existing.data.evidenceLink);
@@ -44,10 +49,12 @@ export default function EmployeeDashboard() {
     };
 
     window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('hr_data_changed', loadData);
     const interval = setInterval(loadData, 2000);
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('hr_data_changed', loadData);
       clearInterval(interval);
     };
   }, [currentUser]);
@@ -59,7 +66,7 @@ export default function EmployeeDashboard() {
 
     const computed = dataService.computeAssessment(scores);
     const data: AssessmentData = {
-      tools, frequency, scores, evidenceDesc, evidenceLink
+      tools, frequency, botNames, botCount, scores, evidenceDesc, evidenceLink
     };
 
     const newRecord: AssessmentRecord = {
@@ -74,8 +81,12 @@ export default function EmployeeDashboard() {
 
     dataService.saveAssessment(newRecord);
     setRecord(newRecord);
-    setSubmitting(false);
-    alert('✅ 評核表單已成功送出！');
+    
+    // Simulate API delay
+    setTimeout(() => {
+      setSubmitting(false);
+      window.dispatchEvent(new Event('hr_data_changed'));
+    }, 800);
   };
 
   const renderSlider = (label: string, field: keyof AssessmentScores, desc: string) => (
@@ -97,6 +108,21 @@ export default function EmployeeDashboard() {
     </div>
   );
 
+  if (record?.status === 'Reviewed' && currentUser) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center border-b border-slate-200 pb-4">
+          <div>
+             <h2 className="text-2xl font-bold tracking-tight text-slate-800">評核完成</h2>
+             <p className="text-sm text-slate-500 mt-1">感謝參與，主管已完成您的 AI 職能覆核</p>
+          </div>
+          <button onClick={logout} className="text-slate-500 hover:text-slate-800 font-medium text-sm transition-colors">登出系統</button>
+        </div>
+        <TalentProfile record={record} user={currentUser} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-end border-b border-slate-200 pb-4">
@@ -115,9 +141,9 @@ export default function EmployeeDashboard() {
             {/* Base info */}
             <div>
               <h3 className="text-lg font-semibold text-slate-800 mb-4 border-l-4 border-blue-500 pl-2">1. 常用工具與頻率</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">常用 AI 工具名稱</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">常用 AI 工具</label>
                   <input type="text" value={tools} onChange={e => setTools(e.target.value)} disabled={record?.status === 'Reviewed'}
                     className="w-full rounded-xl bg-white/50 backdrop-blur-sm border border-white/60 px-4 py-2.5 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all placeholder:text-slate-400"
                     placeholder="例如：ChatGPT, Claude, Midjourney" />
@@ -126,12 +152,26 @@ export default function EmployeeDashboard() {
                   <label className="block text-sm font-medium text-slate-700 mb-1">使用頻率</label>
                   <select value={frequency} onChange={e => setFrequency(e.target.value)} disabled={record?.status === 'Reviewed'}
                     className="w-full rounded-xl bg-white/50 backdrop-blur-sm border border-white/60 px-4 py-2.5 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all">
-                    <option>每天多次</option>
-                    <option>每天一次</option>
+                    <option>每日多次</option>
                     <option>每週多次</option>
-                    <option>每月幾次</option>
-                    <option>幾乎不用</option>
+                    <option>偶爾使用</option>
+                    <option>幾乎不使用</option>
                   </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">常用機器人名稱</label>
+                  <input type="text" value={botNames} onChange={e => setBotNames(e.target.value)} disabled={record?.status === 'Reviewed'}
+                    className="w-full rounded-xl bg-white/50 backdrop-blur-sm border border-white/60 px-4 py-2.5 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all placeholder:text-slate-400"
+                    placeholder="例如：HR助理、程式碼優化助手" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">機器人數量</label>
+                  <input type="number" value={botCount} onChange={e => setBotCount(parseInt(e.target.value) || 0)} disabled={record?.status === 'Reviewed'}
+                    className="w-full rounded-xl bg-white/50 backdrop-blur-sm border border-white/60 px-4 py-2.5 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all"
+                    min="0" />
                 </div>
               </div>
             </div>

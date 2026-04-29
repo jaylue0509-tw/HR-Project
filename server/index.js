@@ -1,6 +1,11 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { setupDB } from './db.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const distPath = path.resolve(__dirname, '../dist');
 
 const SHEETS_WEBHOOK = 'https://script.google.com/macros/s/AKfycbySnwVPR0W1pE3JN2MW2Bx6nFAtTRzoPkLCscw4DSqQVf6N_ZndbOp2VSsBJQZdn7Eu/exec';
 
@@ -54,6 +59,8 @@ async function syncToGoogleSheets() {
         '綜合分數': computed.comprehensiveScore ?? '',
         '核心強項': computed.coreStrengths || '',
         '人才型態': computed.talentType || '',
+        '常用機器人': data.botNames || '',
+        '機器人數量': data.botCount || 0,
         // 主管覆核
         '最終評級': review.finalGrade || '',
         '主管評語': review.comments || '',
@@ -75,10 +82,13 @@ async function syncToGoogleSheets() {
 }
 
 const app = express();
-const port = 3001;
+const port = process.env.PORT || 3002;
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
+
+// 讓 Express 提供 Vite 編譯後的靜態網頁檔案
+app.use(express.static(distPath));
 
 let db;
 
@@ -88,6 +98,94 @@ setupDB().then(database => {
 }).catch(err => {
   console.error('Failed to initialize database:', err);
 });
+
+// ─── HR Account Management ─────────────────────────────────────────────────
+
+// Login with email + password
+app.post('/api/hr/login', async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const account = await db.get(
+      'SELECT * FROM hr_accounts WHERE email = ? AND password = ?',
+      [email, password]
+    );
+    if (!account) return res.status(401).json({ error: '帳號或密碼錯誤' });
+    // Return account info without password
+    const { password: _, ...safe } = account;
+    res.json(safe);
+  } catch (err) {
+    res.status(500).json({ error: '伺服器錯誤' });
+  }
+});
+
+// List all HR accounts (requires canManageAccounts)
+app.get('/api/hr/accounts', async (req, res) => {
+  try {
+    const accounts = await db.all(
+      'SELECT id, name, email, canImport, canExport, canManageAccounts, createdAt FROM hr_accounts'
+    );
+    res.json(accounts);
+  } catch (err) {
+    res.status(500).json({ error: '伺服器錯誤' });
+  }
+});
+
+// Create new HR account
+app.post('/api/hr/accounts', async (req, res) => {
+  const { name, email, password, canImport = 1, canExport = 1, canManageAccounts = 0 } = req.body;
+  if (!name || !email || !password) return res.status(400).json({ error: '缺少必填欄位' });
+  try {
+    await db.run(
+      'INSERT INTO hr_accounts (name, email, password, canImport, canExport, canManageAccounts) VALUES (?, ?, ?, ?, ?, ?)',
+      [name, email, password, canImport ? 1 : 0, canExport ? 1 : 0, canManageAccounts ? 1 : 0]
+    );
+    res.json({ message: '帳號建立成功' });
+  } catch (err) {
+    if (err.message.includes('UNIQUE')) return res.status(409).json({ error: 'Email 已存在' });
+    res.status(500).json({ error: '伺服器錯誤' });
+  }
+});
+
+// Update HR account
+app.put('/api/hr/accounts/:id', async (req, res) => {
+  const { name, password, canImport, canExport, canManageAccounts } = req.body;
+  const { id } = req.params;
+  try {
+    if (password) {
+      await db.run(
+        'UPDATE hr_accounts SET name=?, password=?, canImport=?, canExport=?, canManageAccounts=? WHERE id=?',
+        [name, password, canImport ? 1 : 0, canExport ? 1 : 0, canManageAccounts ? 1 : 0, id]
+      );
+    } else {
+      await db.run(
+        'UPDATE hr_accounts SET name=?, canImport=?, canExport=?, canManageAccounts=? WHERE id=?',
+        [name, canImport ? 1 : 0, canExport ? 1 : 0, canManageAccounts ? 1 : 0, id]
+      );
+    }
+    res.json({ message: '更新成功' });
+  } catch (err) {
+    res.status(500).json({ error: '伺服器錯誤' });
+  }
+});
+
+// Delete HR account
+app.delete('/api/hr/accounts/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    // Prevent deleting last admin
+    const adminCount = await db.get('SELECT COUNT(*) as cnt FROM hr_accounts WHERE canManageAccounts = 1');
+    const target = await db.get('SELECT canManageAccounts FROM hr_accounts WHERE id = ?', [id]);
+    if (target?.canManageAccounts && adminCount.cnt <= 1) {
+      return res.status(400).json({ error: '無法刪除最後一個管理員帳號' });
+    }
+    await db.run('DELETE FROM hr_accounts WHERE id = ?', [id]);
+    res.json({ message: '帳號已刪除' });
+  } catch (err) {
+    res.status(500).json({ error: '伺服器錯誤' });
+  }
+});
+
+// ─── Users & Assessments ────────────────────────────────────────────────────
 
 // Users
 app.get('/api/users', async (req, res) => {
@@ -261,6 +359,20 @@ app.get('/api/sync', async (req, res) => {
   }
 });
 
-app.listen(port, () => {
+// Serve static files from the React app
+app.use(express.static(distPath));
+
+// The "catchall" handler: for any request that doesn't
+// match one above, send back React's index.html file.
+app.get('*', (req, res) => {
+  res.sendFile(path.join(distPath, 'index.html'));
+});
+
+// 所有未匹配的 API 請求，都回傳 index.html 讓 React Router 處理
+app.get('*', (req, res) => {
+  res.sendFile(path.join(distPath, 'index.html'));
+});
+
+app.listen(port, '0.0.0.0', () => {
   console.log(`🚀 Backend server is running at http://localhost:${port}`);
 });

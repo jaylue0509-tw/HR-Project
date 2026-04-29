@@ -1,4 +1,4 @@
-import { User, AssessmentRecord, AssessmentData, AssessmentComputed, SupervisorReview, AssessmentScores } from './types';
+import { User, AssessmentRecord, AssessmentData, AssessmentComputed, SupervisorReview, AssessmentScores } from '../types';
 
 const USERS_KEY = 'hr_ai_users';
 const ASSESSMENTS_KEY = 'hr_ai_assessments';
@@ -75,37 +75,51 @@ export const dataService = {
 
   // Compute logic
   computeAssessment(scores: AssessmentScores): AssessmentComputed {
-    const domainContent = ((scores.textGeneration + scores.contentOrganization) / 2) * 2;
-    const domainEfficiency = ((scores.workEfficiency + scores.processOptimization) / 2) * 2;
-    const domainAnalysis = ((scores.analysis + scores.decisionSupport) / 2) * 2;
-    const domainInnovation = ((scores.ideaGeneration + scores.professionalApplication) / 2) * 2;
-    const domainIntegration = ((scores.structureDesign + scores.botConstruction) / 2) * 2;
+    // 1. Five domain scores (5-pt scale)
+    const dContent = (scores.textGeneration + scores.contentOrganization) / 2;
+    const dEfficiency = (scores.workEfficiency + scores.processOptimization) / 2;
+    const dAnalysis = (scores.analysis + scores.decisionSupport) / 2;
+    const dInnovation = (scores.ideaGeneration + scores.professionalApplication) / 2;
+    const dIntegration = (scores.structureDesign + scores.botConstruction) / 2;
 
     const domains = [
-      { name: '內容應用型', score: domainContent },
-      { name: '流程優化型', score: domainEfficiency },
-      { name: '數據分析型', score: domainAnalysis },
-      { name: '策略推進/設計生成型', score: domainInnovation },
-      { name: '機器人建置型', score: domainIntegration },
+      { name: '內容應用型', score: dContent },
+      { name: '流程優化型', score: dEfficiency },
+      { name: '數據分析型', score: dAnalysis },
+      { name: '策略推進/設計生成型', score: dInnovation },
+      { name: '機器人建置型', score: dIntegration },
     ];
 
-    const breadth = domains.reduce((sum, d) => sum + d.score, 0) / 5;
+    // 2. Average of 10 indicators (5-pt scale)
+    const indicators = Object.values(scores);
+    const average5 = indicators.reduce((sum, s) => sum + s, 0) / indicators.length;
     
-    // Depth: highest 2 domains average
+    // 3. Depth: highest 2 domains average (5-pt scale)
     const sortedDomains = [...domains].sort((a, b) => b.score - a.score);
-    const depth = (sortedDomains[0].score + sortedDomains[1].score) / 2;
+    const depth5 = (sortedDomains[0].score + sortedDomains[1].score) / 2;
 
-    const comprehensiveScore = (breadth * 0.6) + (depth * 0.4);
+    // 4. Formula: (Average * 0.6) + (Depth * 0.4)
+    const comprehensive5 = (average5 * 0.6) + (depth5 * 0.4);
+
+    // 5. Convert to 10-pt scale
+    const domainContent = dContent * 2;
+    const domainEfficiency = dEfficiency * 2;
+    const domainAnalysis = dAnalysis * 2;
+    const domainInnovation = dInnovation * 2;
+    const domainIntegration = dIntegration * 2;
+    const breadth = average5 * 2;
+    const depth = depth5 * 2;
+    const comprehensiveScore = comprehensive5 * 2;
 
     const coreStrengths = `${sortedDomains[0].name}, ${sortedDomains[1].name}`;
     const talentType = sortedDomains[0].name;
 
     return {
-      domainContent,
-      domainEfficiency,
-      domainAnalysis,
-      domainInnovation,
-      domainIntegration,
+      domainContent: Number(domainContent.toFixed(2)),
+      domainEfficiency: Number(domainEfficiency.toFixed(2)),
+      domainAnalysis: Number(domainAnalysis.toFixed(2)),
+      domainInnovation: Number(domainInnovation.toFixed(2)),
+      domainIntegration: Number(domainIntegration.toFixed(2)),
       breadth: Number(breadth.toFixed(2)),
       depth: Number(depth.toFixed(2)),
       comprehensiveScore: Number(comprehensiveScore.toFixed(2)),
@@ -115,29 +129,35 @@ export const dataService = {
   },
 
   calculateFinalGrade(computed: AssessmentComputed, review: Partial<SupervisorReview>): 'A' | 'B' | 'C' | 'D' | 'E' {
-    const { comprehensiveScore, depth } = computed;
-    const validEvidence = review.evidenceStatus === 'Approved';
+    const { comprehensiveScore } = computed;
+    const hasEvidence = review.evidenceStatus === 'Approved';
     
-    // Logic from specifications:
-    // A: 綜合 >= 8.0, 核心 >= 8.5
-    // B: 綜合 >= 6.5, 核心 >= 8.0
-    // C: 綜合 >= 4.5, 核心 >= 7.0
-    // D: 綜合 >= 2.5
-    // E: 綜合 < 2.5
-    // Rule: A/B needs valid evidence. Otherwise max C.
+    // impactScore (1-5) from supervisor adjusts the effective depth.
+    // Default to 3 if not set. Maps: 1→0.6, 2→0.8, 3→1.0, 4→1.15, 5→1.3
+    const impact = review.impactScore ?? 3;
+    const impactMultiplier = 0.6 + (impact - 1) * (0.7 / 4); // linear: 1→0.6 ... 5→1.3
+    const adjustedDepth = computed.depth * impactMultiplier;
 
-    if (comprehensiveScore >= 8.0 && depth >= 8.5) {
-      return validEvidence ? 'A' : 'C';
+    // A: comprehensive >= 8.0, adjustedDepth >= 8.5, needs evidence
+    if (comprehensiveScore >= 8.0 && adjustedDepth >= 8.5) {
+      return hasEvidence ? 'A' : 'C';
     }
-    if (comprehensiveScore >= 6.5 && depth >= 8.0) {
-      return validEvidence ? 'B' : 'C';
+    
+    // B: comprehensive >= 6.5, adjustedDepth >= 8.0, needs evidence  
+    if (comprehensiveScore >= 6.5 && adjustedDepth >= 8.0) {
+      return hasEvidence ? 'B' : 'C';
     }
-    if (comprehensiveScore >= 4.5 && depth >= 7.0) {
-      return 'C';
-    }
-    if (comprehensiveScore >= 2.5) {
+    
+    // C: comprehensive >= 4.5
+    if (comprehensiveScore >= 4.5) {
+      if (comprehensiveScore >= 6.5 || adjustedDepth >= 7.0) return 'C';
       return 'D';
     }
+    
+    // D: comprehensive >= 2.5
+    if (comprehensiveScore >= 2.5) return 'D';
+    
+    // E: < 2.5
     return 'E';
   }
 };

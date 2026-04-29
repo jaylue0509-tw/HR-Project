@@ -1,5 +1,15 @@
 export type Role = 'HR' | 'Employee' | 'Supervisor';
 
+export interface HRAccount {
+  id: number;
+  name: string;
+  email: string;
+  canImport: number;
+  canExport: number;
+  canManageAccounts: number;
+  createdAt?: string;
+}
+
 export interface User {
   company: string;
   department: string;
@@ -27,6 +37,8 @@ export interface AssessmentScores {
 export interface AssessmentData {
   tools: string;
   frequency: string;
+  botNames: string;
+  botCount: number;
   scores: AssessmentScores;
   evidenceDesc: string;
   evidenceLink: string;
