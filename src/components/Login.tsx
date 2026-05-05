@@ -34,10 +34,10 @@ export default function Login() {
           const match = users.find(u => 
             u.email.trim().toLowerCase() === cleanEmail.toLowerCase() && 
             u.name.trim() === cleanName && 
-            u.company === company
+            (!company || u.company === company)
           );
           if (!match) {
-            setError('找不到此公司、Email 與姓名組合，請確認是否由 HR 導入。');
+            setError('找不到此 Email 與姓名組合，或公司別不符，請確認是否由 HR 導入。');
             setLoading(false);
             return;
           }
@@ -45,10 +45,10 @@ export default function Login() {
           const match = users.find(u => 
             u.supervisorEmail.trim().toLowerCase() === cleanEmail.toLowerCase() && 
             u.supervisorName.trim() === cleanName && 
-            u.company === company
+            (!company || u.company === company)
           );
           if (!match) {
-            setError('找不到擔任主管的此公司、Email 與姓名組合。');
+            setError('找不到擔任主管的此 Email 與姓名組合，或公司別不符。');
             setLoading(false);
             return;
           }
@@ -60,6 +60,7 @@ export default function Login() {
       setLoading(false);
     }
   };
+
 
   const roleLabels: Record<Role, string> = {
     HR: '人資 / 管理員',
@@ -113,7 +114,6 @@ export default function Login() {
               value={company}
               onChange={e => setCompany(e.target.value)}
               className="w-full rounded-xl bg-white/50 border border-white/60 px-4 py-2.5 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all text-slate-700"
-              required
             >
               <option value="" disabled>請選擇公司別</option>
               <option value="東森新媒體(含民調雲)">東森新媒體(含民調雲)</option>
