@@ -29,11 +29,13 @@ export const dataService = {
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
     // 同步到 GAS
     try {
-      await fetch(GAS_URL, {
+      const response = await fetch(GAS_URL, {
         method: 'POST',
-        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action: 'syncUsers', data: users })
       });
+      const result = await response.json();
+      if (result.status === 'error') throw new Error(result.message);
     } catch (e) {
       console.error('Failed to sync users to GAS', e);
       throw e;
@@ -63,11 +65,13 @@ export const dataService = {
     localStorage.setItem(ASSESSMENTS_KEY, JSON.stringify(assessments));
     // 同步到 GAS
     try {
-      await fetch(GAS_URL, {
+      const response = await fetch(GAS_URL, {
         method: 'POST',
-        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action: 'syncAssessment', data: record })
       });
+      const result = await response.json();
+      if (result.status === 'error') throw new Error(result.message);
     } catch (e) {
       console.error('Failed to sync assessment to GAS', e);
       throw e;
