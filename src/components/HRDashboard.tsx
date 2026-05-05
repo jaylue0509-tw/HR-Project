@@ -308,9 +308,9 @@ export default function HRDashboard() {
                 <thead className="bg-white/30 backdrop-blur-md border-b border-white/40">
                   <tr>
                     <th className="px-4 py-2 text-left font-semibold text-slate-600">姓名</th>
-                    <th className="px-4 py-2 text-left font-semibold text-slate-600">Email</th>
+                    <th className="px-4 py-2 text-left font-semibold text-slate-600">公司信箱</th>
                     <th className="px-4 py-2 text-left font-semibold text-slate-600">部門</th>
-                    <th className="px-4 py-2 text-left font-semibold text-slate-600">主管 (姓名 / Email)</th>
+                    <th className="px-4 py-2 text-left font-semibold text-slate-600">主管 (姓名 / 公司信箱)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/40 bg-transparent">
@@ -405,7 +405,7 @@ export default function HRDashboard() {
                     <input type="text" value={editUserForm.name} onChange={e => setEditUserForm({...editUserForm, name: e.target.value})} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-blue-500" />
                   </div>
                   <div>
-                    <label className="block text-slate-500 mb-1">Email <span className="text-xs text-red-400">(修改可能影響歷史紀錄)</span></label>
+                    <label className="block text-slate-500 mb-1">公司信箱 <span className="text-xs text-red-400">(修改可能影響歷史紀錄)</span></label>
                     <input type="email" value={editUserForm.email} onChange={e => setEditUserForm({...editUserForm, email: e.target.value})} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-blue-500" />
                   </div>
                   <div>
@@ -426,7 +426,7 @@ export default function HRDashboard() {
                     <input type="text" value={editUserForm.supervisorName} onChange={e => setEditUserForm({...editUserForm, supervisorName: e.target.value})} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-blue-500" />
                   </div>
                   <div>
-                    <label className="block text-slate-500 mb-1">主管 Email</label>
+                    <label className="block text-slate-500 mb-1">主管公司信箱</label>
                     <input type="email" value={editUserForm.supervisorEmail} onChange={e => setEditUserForm({...editUserForm, supervisorEmail: e.target.value})} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-blue-500" />
                   </div>
                 </div>

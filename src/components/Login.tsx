@@ -147,12 +147,12 @@ export default function Login() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">公司信箱</label>
                 <input
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  placeholder="請輸入您的工作 Email"
+                  placeholder="請輸入您的公司信箱"
                   className="w-full rounded-2xl apple-glass-ultra-thin border-white/60 px-4 py-3 text-base focus:bg-white/70 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400/50 transition-all text-slate-800 shadow-sm placeholder:text-slate-400"
                   required
                 />
@@ -161,7 +161,7 @@ export default function Login() {
           ) : (
             <>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">人資 Email</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">公司信箱</label>
                 <input
                   type="email"
                   value={email}
