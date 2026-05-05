@@ -204,8 +204,8 @@ export default function HRDashboard() {
           </div>
         ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in">
-          <div className="bg-white/40 backdrop-blur-xl p-6 rounded-2xl border border-white/60 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)]">
-            <h3 className="text-lg font-semibold text-slate-800 mb-4">資料導入區</h3>
+          <div className="apple-glass-thin rounded-[2rem] p-8">
+            <h3 className="text-xl font-display font-semibold text-slate-800 mb-4">資料導入區</h3>
             <p className="text-sm text-slate-500 mb-4">
               請貼上 CSV 格式內容，或使用 Excel 檔案匯入。<br/>
               對應欄位名稱：（包含即可，多的欄位如「序號、員工編號」會自動略過）<br/>
@@ -214,7 +214,7 @@ export default function HRDashboard() {
             <textarea
               value={csvText}
               onChange={(e) => setCsvText(e.target.value)}
-              className="w-full h-48 rounded-xl bg-white/50 backdrop-blur-sm border border-white/60 p-3 text-sm focus:border-blue-400 focus:ring-1 focus:ring-blue-400 focus:bg-white/70 transition-all mb-3"
+              className="w-full h-48 rounded-xl apple-glass-ultra-thin border-white/60 p-4 text-sm focus:border-slate-400 focus:ring-1 focus:ring-slate-400 focus:bg-white/70 transition-all mb-4"
               placeholder={sampleCsv}
             />
             <div className="flex flex-wrap items-center gap-3">
@@ -301,8 +301,8 @@ export default function HRDashboard() {
             </div>
           </div>
 
-          <div className="bg-white/40 backdrop-blur-xl p-6 rounded-2xl border border-white/60 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] flex flex-col">
-            <h3 className="text-lg font-semibold text-slate-800 mb-4">目前員工名單 ({users.length})</h3>
+          <div className="apple-glass-thin rounded-[2rem] p-8 flex flex-col">
+            <h3 className="text-xl font-display font-semibold text-slate-800 mb-4">目前員工名單 ({users.length})</h3>
             <div className="overflow-y-auto flex-1 max-h-64 border rounded-md">
               <table className="min-w-full divide-y divide-slate-200 text-sm">
                 <thead className="bg-white/30 backdrop-blur-md border-b border-white/40">
@@ -342,9 +342,9 @@ export default function HRDashboard() {
       {activeTab === 'overview' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in">
           {/* Left: Team List */}
-          <div className="lg:col-span-1 bg-white/40 backdrop-blur-xl rounded-2xl shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] border border-white/60 p-0 overflow-hidden flex flex-col h-[700px]">
-            <div className="p-4 bg-slate-50 border-b border-slate-200">
-               <h3 className="font-semibold text-slate-800">全體員工列表</h3>
+          <div className="lg:col-span-1 apple-glass-thin rounded-[2rem] p-0 overflow-hidden flex flex-col h-[700px]">
+            <div className="p-6 bg-slate-50/50 backdrop-blur border-b border-slate-200">
+               <h3 className="font-display text-xl font-semibold text-slate-800">全體員工列表</h3>
             </div>
             <div className="overflow-y-auto flex-1 p-2 space-y-1 bg-white/20 backdrop-blur-sm">
               {users.map((u, idx) => {
@@ -358,10 +358,10 @@ export default function HRDashboard() {
                   <button 
                     key={idx} 
                     onClick={() => handleSelectUser(u)}
-                    className={`w-full text-left p-3 rounded-xl border transition-all backdrop-blur-sm ${
+                    className={`w-full text-left p-4 rounded-2xl border transition-all duration-300 ${
                       selectedUser?.email === u.email 
-                        ? 'bg-blue-100/50 border-blue-300 ring-1 ring-blue-400 shadow-sm' 
-                        : 'bg-white/40 border-white/50 hover:bg-white/60 hover:shadow-sm'
+                        ? 'bg-white border-slate-300 shadow-md scale-[1.02] z-10 relative' 
+                        : 'apple-glass-ultra-thin hover:bg-white/60 hover:shadow-sm'
                     }`}
                   >
                     <div className="flex justify-between items-start">
@@ -385,7 +385,7 @@ export default function HRDashboard() {
           </div>
 
           {/* Right: Review detail */}
-          <div className="lg:col-span-2 bg-white/40 backdrop-blur-xl rounded-2xl shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] border border-white/60 p-6 flex flex-col h-[700px] overflow-y-auto relative">
+          <div className="lg:col-span-2 apple-glass-thin rounded-[2rem] p-8 flex flex-col h-[700px] overflow-y-auto relative">
             {!selectedUser ? (
               <div className="flex-1 flex items-center justify-center text-slate-400">
                  請由左側選擇一名員工以檢視或編輯狀態

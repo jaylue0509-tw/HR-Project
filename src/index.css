@@ -1,5 +1,39 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-tight;
+  }
+}
+
+@layer utilities {
+  /* Apple HIG Liquid Glass Materials */
+  .apple-glass-ultra-thin {
+    @apply bg-white/20 backdrop-blur-md border border-white/40 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.05)];
+  }
+  .apple-glass-thin {
+    @apply bg-white/40 backdrop-blur-xl border border-white/50 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)];
+  }
+  .apple-glass-thick {
+    @apply bg-white/70 backdrop-blur-2xl border border-white/60 shadow-[0_12px_48px_-12px_rgba(0,0,0,0.1)];
+  }
+  .apple-glass-dark {
+    @apply bg-slate-900/40 backdrop-blur-xl border border-white/10 shadow-[0_16px_40px_-8px_rgba(0,0,0,0.3)];
+  }
+  .apple-glass-panel {
+    @apply bg-white/60 backdrop-blur-lg border border-white/50 shadow-sm rounded-2xl;
+  }
+}
 @keyframes blob {
   0% { transform: translate(0px, 0px) scale(1); }
   33% { transform: translate(30px, -50px) scale(1.1); }

@@ -142,17 +142,20 @@ export default function EmployeeDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-end border-b border-slate-200 pb-4">
+      <div className="flex justify-between items-center mb-8">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-800">員工自評區</h2>
-          <p className="text-sm text-slate-500 mt-1">哈囉, {currentUser?.name} ({currentUser?.title})</p>
+          <h2 className="text-3xl font-display font-bold tracking-tight text-slate-800">員工自評專區</h2>
+          <p className="text-base text-slate-500 mt-1 font-medium">
+            登入身分：<strong>{currentUser?.name}</strong> <span className="text-sm text-slate-400 ml-2">{currentUser?.department} • {currentUser?.title}</span>
+          </p>
         </div>
+        <button onClick={logout} className="text-slate-500 hover:text-slate-800 font-medium text-base transition-colors px-4 py-2 apple-glass-ultra-thin rounded-xl">登出</button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in">
         
         {/* Left: Input Form */}
-        <div className="lg:col-span-2 bg-white/40 backdrop-blur-xl rounded-2xl shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] border border-white/60 p-6">
+        <div className="lg:col-span-2 apple-glass-thin rounded-[2rem] p-8 flex flex-col relative shadow-[0_8px_32px_0_rgba(31,38,135,0.07)]">
           <form onSubmit={handleSubmit} className="space-y-8">
             
             {/* Base info */}
@@ -162,13 +165,13 @@ export default function EmployeeDashboard() {
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">常用 AI 工具</label>
                   <input type="text" value={tools} onChange={e => setTools(e.target.value)} disabled={record?.status === 'Reviewed'}
-                    className="w-full rounded-xl bg-white/50 backdrop-blur-sm border border-white/60 px-4 py-2.5 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all placeholder:text-slate-400"
+                    className="w-full rounded-xl apple-glass-ultra-thin border border-white/60 px-4 py-2.5 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all placeholder:text-slate-400"
                     placeholder="例如：ChatGPT, Claude, Midjourney" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">使用頻率</label>
                   <select value={frequency} onChange={e => setFrequency(e.target.value)} disabled={record?.status === 'Reviewed'}
-                    className="w-full rounded-xl bg-white/50 backdrop-blur-sm border border-white/60 px-4 py-2.5 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all">
+                    className="w-full rounded-xl apple-glass-ultra-thin border border-white/60 px-4 py-2.5 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all">
                     <option>每日多次</option>
                     <option>每週多次</option>
                     <option>偶爾使用</option>
@@ -181,13 +184,13 @@ export default function EmployeeDashboard() {
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">常用機器人名稱</label>
                   <input type="text" value={botNames} onChange={e => setBotNames(e.target.value)} disabled={record?.status === 'Reviewed'}
-                    className="w-full rounded-xl bg-white/50 backdrop-blur-sm border border-white/60 px-4 py-2.5 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all placeholder:text-slate-400"
+                    className="w-full rounded-xl apple-glass-ultra-thin border border-white/60 px-4 py-2.5 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all placeholder:text-slate-400"
                     placeholder="例如：HR助理、程式碼優化助手" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">機器人數量</label>
                   <input type="number" value={botCount} onChange={e => setBotCount(parseInt(e.target.value) || 0)} disabled={record?.status === 'Reviewed'}
-                    className="w-full rounded-xl bg-white/50 backdrop-blur-sm border border-white/60 px-4 py-2.5 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all"
+                    className="w-full rounded-xl apple-glass-ultra-thin border border-white/60 px-4 py-2.5 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all"
                     min="0" />
                 </div>
               </div>
@@ -199,7 +202,7 @@ export default function EmployeeDashboard() {
                 <h3 className="text-lg font-semibold text-slate-800 border-l-4 border-blue-500 pl-2">2. 十項能力指標自評 (1~5分)</h3>
                 <div className="flex flex-wrap gap-2 text-[10px]">
                   {Object.entries(scoreHints).map(([val, info]) => (
-                    <div key={val} className="bg-white/80 px-2 py-1 rounded border border-slate-100 shadow-sm">
+                    <div key={val} className="apple-glass-ultra-thin px-2 py-1 rounded border border-slate-100 shadow-sm">
                       <span className="font-bold text-blue-600">{val}分</span> {info.label}
                     </div>
                   ))}
@@ -227,13 +230,13 @@ export default function EmployeeDashboard() {
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">量化成效說明</label>
                   <textarea value={evidenceDesc} onChange={e => setEvidenceDesc(e.target.value)} disabled={record?.status === 'Reviewed'}
-                    className="w-full h-24 rounded-xl bg-white/50 backdrop-blur-sm border border-white/60 px-4 py-3 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all placeholder:text-slate-400"
+                    className="w-full h-24 rounded-xl apple-glass-ultra-thin border border-white/60 px-4 py-3 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all placeholder:text-slate-400"
                     placeholder="描述具體成效，如：節省每週工時 5 小時、品質提升... 等等" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">相關連結 / 附件位置 (可貼多個連結)</label>
                   <textarea value={evidenceLink} onChange={e => setEvidenceLink(e.target.value)} disabled={record?.status === 'Reviewed'}
-                    className="w-full h-24 rounded-xl bg-white/50 backdrop-blur-sm border border-white/60 px-4 py-3 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all placeholder:text-slate-400"
+                    className="w-full h-24 rounded-xl apple-glass-ultra-thin border border-white/60 px-4 py-3 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all placeholder:text-slate-400"
                     placeholder="您的產出檔案連結、SOP 連結或對話記錄分享 (一行一個連結)" />
                 </div>
               </div>
@@ -259,8 +262,8 @@ export default function EmployeeDashboard() {
         {/* Right: Results / Status */}
         <div className="lg:col-span-1 space-y-6">
           {record ? (
-            <div className="bg-white/40 backdrop-blur-xl rounded-2xl shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] border border-white/60 p-6">
-              <h3 className="text-lg font-semibold text-slate-800 mb-4 text-center">評核狀態</h3>
+            <div className="apple-glass-thin rounded-[2rem] p-8">
+              <h3 className="font-display text-xl font-semibold text-slate-800 mb-4">評核狀態</h3>
               
               <div className="flex flex-col items-center justify-center py-6 border-b border-slate-100">
                 <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 text-2xl ${record.status === 'Reviewed' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>

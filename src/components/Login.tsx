@@ -75,29 +75,29 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white/40 backdrop-blur-xl rounded-2xl shadow-[0_8px_32px_0_rgba(31,38,135,0.10)] border border-white/60 p-8">
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg ring-4 ring-white/50">
+      <div className="max-w-md w-full apple-glass-thin rounded-[2rem] p-10">
+        <div className="text-center mb-10">
+          <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-[1.25rem] flex items-center justify-center mx-auto mb-6 shadow-xl ring-4 ring-white/60">
             <span className="text-3xl">✨</span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-indigo-900">AI 人才評核系統</h1>
-          <p className="text-sm text-slate-500 mt-2">請選擇您的身分並登入 <span className="text-[10px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded ml-1">Update: 2026-04-30</span></p>
+          <h1 className="text-3xl font-display font-bold tracking-tight text-slate-900 mb-2">AI 人才評核系統</h1>
+          <p className="text-base text-slate-500 font-medium">請選擇您的身分並登入 <span className="text-[10px] bg-slate-900/5 text-slate-500 px-2 py-1 rounded-full ml-1 font-semibold">2026-04-30</span></p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-5">
           {/* Role selector */}
           <div>
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">登入身分</label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-3">
               {(['HR', 'Employee', 'Supervisor'] as Role[]).map((r) => (
                 <button
                   key={r}
                   type="button"
                   onClick={() => { setRole(r); setError(''); setPassword(''); setCompany(''); }}
-                  className={`py-2.5 px-2 text-xs font-semibold rounded-xl border transition-all flex flex-col items-center gap-1 ${
+                  className={`py-3 px-2 text-xs font-semibold rounded-2xl border transition-all duration-300 flex flex-col items-center gap-1.5 ${
                     role === r
-                      ? 'bg-blue-600/90 text-white border-blue-500 shadow-md'
-                      : 'bg-white/40 text-slate-600 border-white/50 hover:bg-white/60'
+                      ? 'bg-slate-900 text-white border-slate-800 shadow-md scale-[1.02]'
+                      : 'apple-glass-ultra-thin text-slate-600 hover:bg-white/60'
                   }`}
                 >
                   <span className="text-lg">{roleIcons[r]}</span>
@@ -109,11 +109,11 @@ export default function Login() {
 
           {/* Company Selection - Now for ALL roles */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">公司別</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">公司別</label>
             <select
               value={company}
               onChange={e => setCompany(e.target.value)}
-              className="w-full rounded-xl bg-white/50 border border-white/60 px-4 py-2.5 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all text-slate-700"
+              className="w-full rounded-2xl apple-glass-ultra-thin border-white/60 px-4 py-3 text-base focus:bg-white/70 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400/50 transition-all text-slate-800 shadow-sm"
             >
               <option value="" disabled>請選擇公司別</option>
               <option value="東森新媒體(含民調雲)">東森新媒體(含民調雲)</option>
@@ -136,24 +136,24 @@ export default function Login() {
           {role !== 'HR' ? (
             <>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">姓名</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">姓名</label>
                 <input
                   type="text"
                   value={name}
                   onChange={e => setName(e.target.value)}
                   placeholder="請輸入您的真實姓名"
-                  className="w-full rounded-xl bg-white/50 border border-white/60 px-4 py-2.5 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all placeholder:text-slate-400"
+                  className="w-full rounded-2xl apple-glass-ultra-thin border-white/60 px-4 py-3 text-base focus:bg-white/70 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400/50 transition-all text-slate-800 shadow-sm placeholder:text-slate-400"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email</label>
                 <input
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="請輸入您的工作 Email"
-                  className="w-full rounded-xl bg-white/50 border border-white/60 px-4 py-2.5 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all placeholder:text-slate-400"
+                  className="w-full rounded-2xl apple-glass-ultra-thin border-white/60 px-4 py-3 text-base focus:bg-white/70 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400/50 transition-all text-slate-800 shadow-sm placeholder:text-slate-400"
                   required
                 />
               </div>
@@ -161,24 +161,24 @@ export default function Login() {
           ) : (
             <>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">人資 Email</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">人資 Email</label>
                 <input
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="admin@hr.com"
-                  className="w-full rounded-xl bg-white/50 border border-white/60 px-4 py-2.5 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all placeholder:text-slate-400"
+                  className="w-full rounded-2xl apple-glass-ultra-thin border-white/60 px-4 py-3 text-base focus:bg-white/70 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400/50 transition-all text-slate-800 shadow-sm placeholder:text-slate-400"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">密碼</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">密碼</label>
                 <input
                   type="password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="請輸入密碼"
-                  className="w-full rounded-xl bg-white/50 border border-white/60 px-4 py-2.5 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all placeholder:text-slate-400"
+                  className="w-full rounded-2xl apple-glass-ultra-thin border-white/60 px-4 py-3 text-base focus:bg-white/70 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400/50 transition-all text-slate-800 shadow-sm placeholder:text-slate-400"
                   required
                 />
               </div>
@@ -195,7 +195,7 @@ export default function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-xl bg-slate-800/90 backdrop-blur-md px-4 py-3 text-sm font-semibold text-white shadow-md hover:bg-slate-900 transition-all focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 border border-slate-700/50 disabled:opacity-50"
+            className="w-full rounded-2xl bg-slate-900/95 backdrop-blur-xl px-4 py-4 text-base font-semibold text-white shadow-lg hover:bg-black transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 disabled:opacity-50 mt-4 scale-[0.99] hover:scale-100"
           >
             {loading ? '驗證中...' : '登入'}
           </button>
