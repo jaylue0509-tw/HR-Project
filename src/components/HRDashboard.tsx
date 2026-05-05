@@ -130,11 +130,20 @@ export default function HRDashboard() {
             <span className="ml-3 space-x-2">
               {hrAccount?.canImport ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700">✓ 可導入</span> : null}
               {hrAccount?.canExport ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">✓ 可匯出</span> : null}
-              {hrAccount?.canManageAccounts ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">✓ 管理員</span> : null}
             </span>
           </p>
         </div>
-        <button onClick={logout} className="text-slate-500 hover:text-slate-800 font-medium text-sm transition-colors">登出</button>
+        <div className="flex items-center gap-4">
+          <a
+            href="https://docs.google.com/spreadsheets/d/1SH6dhN8LPuVyVgU1_y9UiBXFXVeK942quybsjFBZDgQ/edit?gid=1425362031#gid=1425362031"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-green-700 bg-green-100 hover:bg-green-200 rounded-lg transition-colors border border-green-200 shadow-sm"
+          >
+            📊 開啟後台 Excel 資料庫
+          </a>
+          <button onClick={logout} className="text-slate-500 hover:text-slate-800 font-medium text-sm transition-colors">登出</button>
+        </div>
       </div>
 
       <div className="flex space-x-4 border-b border-slate-200">
