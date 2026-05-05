@@ -15,6 +15,8 @@ export default function HRDashboard() {
 
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<AssessmentRecord | undefined>(undefined);
+  const [isEditingUser, setIsEditingUser] = useState(false);
+  const [editUserForm, setEditUserForm] = useState<User | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImport = () => {
@@ -118,6 +120,24 @@ export default function HRDashboard() {
   const handleSelectUser = (u: User) => {
     setSelectedUser(u);
     setSelectedRecord(dataService.getAssessmentByEmail(u.email));
+    setIsEditingUser(false);
+  };
+
+  const handleSaveUserEdit = async () => {
+    if (!editUserForm || !selectedUser) return;
+    setMsg('儲存變更中...');
+    try {
+      const currentUsers = dataService.getUsers();
+      const updatedUsers = currentUsers.map(u => u.email === selectedUser.email ? editUserForm : u);
+      await dataService.setUsers(updatedUsers);
+      refreshUsers();
+      setSelectedUser(editUserForm);
+      setIsEditingUser(false);
+      setMsg('員工資料已更新！');
+      setTimeout(() => setMsg(''), 3000);
+    } catch (e) {
+      setMsg('更新失敗，請檢查網路。');
+    }
   };
 
   return (
@@ -365,89 +385,154 @@ export default function HRDashboard() {
           </div>
 
           {/* Right: Review detail */}
-          <div className="lg:col-span-2 bg-white/40 backdrop-blur-xl rounded-2xl shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] border border-white/60 p-6 flex flex-col h-[700px] overflow-y-auto">
+          <div className="lg:col-span-2 bg-white/40 backdrop-blur-xl rounded-2xl shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] border border-white/60 p-6 flex flex-col h-[700px] overflow-y-auto relative">
             {!selectedUser ? (
               <div className="flex-1 flex items-center justify-center text-slate-400">
-                 請由左側選擇一名員工以檢視評核狀態
+                 請由左側選擇一名員工以檢視或編輯狀態
               </div>
-            ) : !selectedRecord ? (
-              <div className="flex-1 flex items-center justify-center flex-col text-slate-500">
-                <div className="text-lg font-semibold mb-2">{selectedUser.name}</div>
-                <div>該名員工尚未送出 AI 職能自評。</div>
+            ) : isEditingUser && editUserForm ? (
+              <div className="animate-in fade-in space-y-4">
+                <div className="flex justify-between items-center border-b border-slate-200 pb-4">
+                  <h3 className="text-lg font-semibold text-slate-800">編輯員工資料</h3>
+                  <div className="space-x-2">
+                    <button onClick={() => setIsEditingUser(false)} className="px-3 py-1.5 text-sm bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200">取消</button>
+                    <button onClick={handleSaveUserEdit} className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">儲存變更</button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <label className="block text-slate-500 mb-1">姓名</label>
+                    <input type="text" value={editUserForm.name} onChange={e => setEditUserForm({...editUserForm, name: e.target.value})} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 mb-1">Email <span className="text-xs text-red-400">(修改可能影響歷史紀錄)</span></label>
+                    <input type="email" value={editUserForm.email} onChange={e => setEditUserForm({...editUserForm, email: e.target.value})} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 mb-1">公司別</label>
+                    <input type="text" value={editUserForm.company} onChange={e => setEditUserForm({...editUserForm, company: e.target.value})} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 mb-1">部門</label>
+                    <input type="text" value={editUserForm.department} onChange={e => setEditUserForm({...editUserForm, department: e.target.value})} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 mb-1">職稱</label>
+                    <input type="text" value={editUserForm.title} onChange={e => setEditUserForm({...editUserForm, title: e.target.value})} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-blue-500" />
+                  </div>
+                  <div></div>
+                  <div>
+                    <label className="block text-slate-500 mb-1">主管姓名</label>
+                    <input type="text" value={editUserForm.supervisorName} onChange={e => setEditUserForm({...editUserForm, supervisorName: e.target.value})} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 mb-1">主管 Email</label>
+                    <input type="email" value={editUserForm.supervisorEmail} onChange={e => setEditUserForm({...editUserForm, supervisorEmail: e.target.value})} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-blue-500" />
+                  </div>
+                </div>
               </div>
             ) : (
-              <div className="space-y-6">
-                
-                <div className="border-b border-slate-200 pb-4 flex justify-between items-center">
-                   <div>
-                      <h3 className="text-xl font-bold text-slate-900">{selectedUser.name} 的 AI 職能自評</h3>
-                      <span className="text-sm text-slate-500">人才型態：{selectedRecord.computed?.talentType}</span>
-                   </div>
-                   <div className="text-right">
-                      <div className="text-xs text-slate-500 mb-1">系統綜合分數</div>
-                      <div className="text-2xl font-bold text-blue-600">{selectedRecord.computed?.comprehensiveScore}</div>
-                   </div>
+              <div className="flex flex-col h-full">
+                <div className="border-b border-slate-200 pb-4 mb-4 flex justify-between items-start">
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                      {selectedUser.name}
+                      <button 
+                        onClick={() => { setEditUserForm(selectedUser); setIsEditingUser(true); }}
+                        className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded-md font-normal border border-slate-200 transition-colors"
+                      >
+                        ✏️ 編輯資料
+                      </button>
+                    </h3>
+                    <div className="text-sm text-slate-500 mt-1">
+                      {selectedUser.company} • {selectedUser.department} • {selectedUser.title}
+                    </div>
+                  </div>
+                  <div className="text-right text-sm text-slate-500">
+                    <div>主管: {selectedUser.supervisorName}</div>
+                    <div className="text-xs">{selectedUser.supervisorEmail}</div>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
-                   <div>
-                      <h4 className="font-semibold text-slate-800 mb-2 border-l-4 border-blue-500 pl-2 text-sm">自評雷達圖</h4>
-                      <div className="bg-slate-50 rounded-lg p-2 h-64">
-                        {selectedRecord.computed && <RadarProfile computed={selectedRecord.computed} />}
-                      </div>
-                   </div>
-                   <div className="space-y-4">
-                      <div>
-                        <h4 className="font-semibold text-slate-800 mb-2 border-l-4 border-blue-500 pl-2 text-sm">成果與證據</h4>
-                        <div className="bg-white/50 backdrop-blur-sm rounded-xl p-3 text-sm border border-white/60 h-64 overflow-y-auto space-y-3">
-                           <div>
-                             <div className="text-xs text-slate-500 font-medium">量化成效</div>
-                             <p className="mt-1 text-slate-800">{selectedRecord.data?.evidenceDesc || '未提報'}</p>
-                           </div>
-                           <div>
-                             <div className="text-xs text-slate-500 font-medium">連結/附件</div>
-                             {selectedRecord.data?.evidenceLink ? (
-                               <a href={selectedRecord.data.evidenceLink} target="_blank" rel="noopener noreferrer" className="mt-1 text-blue-600 hover:underline block break-all">
-                                 {selectedRecord.data.evidenceLink}
-                               </a>
-                             ) : <span className="mt-1 text-slate-800 block">未提供</span>}
-                           </div>
-                           <div>
-                             <div className="text-xs text-slate-500 font-medium">常用工具</div>
-                             <p className="mt-1 text-slate-800">{selectedRecord.data?.tools} ({selectedRecord.data?.frequency})</p>
-                           </div>
+                {!selectedRecord ? (
+                  <div className="flex-1 flex items-center justify-center flex-col text-slate-500">
+                    <div className="text-lg font-semibold mb-2">尚未提報</div>
+                    <div>該名員工尚未送出 AI 職能自評。</div>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="flex justify-between items-end">
+                       <div>
+                          <span className="text-sm font-semibold text-slate-700">人才型態：</span>
+                          <span className="text-sm text-slate-600 bg-slate-100 px-2 py-1 rounded">{selectedRecord.computed?.talentType}</span>
+                       </div>
+                       <div className="text-right">
+                          <div className="text-xs text-slate-500 mb-1">系統綜合分數</div>
+                          <div className="text-2xl font-bold text-blue-600">{selectedRecord.computed?.comprehensiveScore}</div>
+                       </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-6">
+                       <div>
+                          <h4 className="font-semibold text-slate-800 mb-2 border-l-4 border-blue-500 pl-2 text-sm">自評雷達圖</h4>
+                          <div className="bg-slate-50 rounded-lg p-2 h-64">
+                            {selectedRecord.computed && <RadarProfile computed={selectedRecord.computed} />}
+                          </div>
+                       </div>
+                       <div className="space-y-4">
+                          <div>
+                            <h4 className="font-semibold text-slate-800 mb-2 border-l-4 border-blue-500 pl-2 text-sm">成果與證據</h4>
+                            <div className="bg-white/50 backdrop-blur-sm rounded-xl p-3 text-sm border border-white/60 h-64 overflow-y-auto space-y-3">
+                               <div>
+                                 <div className="text-xs text-slate-500 font-medium">量化成效</div>
+                                 <p className="mt-1 text-slate-800">{selectedRecord.data?.evidenceDesc || '未提報'}</p>
+                               </div>
+                               <div>
+                                 <div className="text-xs text-slate-500 font-medium">連結/附件</div>
+                                 {selectedRecord.data?.evidenceLink ? (
+                                   <a href={selectedRecord.data.evidenceLink} target="_blank" rel="noopener noreferrer" className="mt-1 text-blue-600 hover:underline block break-all">
+                                     {selectedRecord.data.evidenceLink}
+                                   </a>
+                                 ) : <span className="mt-1 text-slate-800 block">未提供</span>}
+                               </div>
+                               <div>
+                                 <div className="text-xs text-slate-500 font-medium">常用工具</div>
+                                 <p className="mt-1 text-slate-800">{selectedRecord.data?.tools} ({selectedRecord.data?.frequency})</p>
+                               </div>
+                            </div>
+                          </div>
+                       </div>
+                    </div>
+
+                    {selectedRecord.supervisorReview && (
+                      <div className="bg-blue-50/50 rounded-xl p-5 border border-blue-100 mt-4">
+                        <h4 className="font-semibold text-slate-800 mb-4 border-l-4 border-blue-600 pl-2">主管覆核結果</h4>
+                        <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
+                          <div>
+                            <span className="text-slate-500">成果成熟度 (Impact):</span>
+                            <span className="ml-2 font-medium">{selectedRecord.supervisorReview.impactScore} 分</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500">證據狀態:</span>
+                            <span className="ml-2 font-medium">
+                              {selectedRecord.supervisorReview.evidenceStatus === 'Approved' ? '認可可回放證據' : 
+                               selectedRecord.supervisorReview.evidenceStatus === 'Rejected' ? '不符合標準' : 
+                               selectedRecord.supervisorReview.evidenceStatus === 'Pending' ? '待確認' : '未提供'}
+                            </span>
+                          </div>
+                        </div>
+                        {selectedRecord.supervisorReview.comments && (
+                          <div className="mb-4">
+                            <span className="block text-slate-500 text-sm mb-1">主管評語:</span>
+                            <p className="bg-white p-3 rounded border border-blue-100 text-sm text-slate-700">{selectedRecord.supervisorReview.comments}</p>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-center bg-white p-3 rounded-lg border border-slate-200 mt-4">
+                          <span className="text-sm font-medium">最終判定評級</span>
+                          <span className="font-bold text-xl text-blue-600">{selectedRecord.supervisorReview.finalGrade} 級</span>
                         </div>
                       </div>
-                   </div>
-                </div>
-
-                {selectedRecord.supervisorReview && (
-                  <div className="bg-blue-50/50 rounded-xl p-5 border border-blue-100 mt-4">
-                    <h4 className="font-semibold text-slate-800 mb-4 border-l-4 border-blue-600 pl-2">主管覆核結果</h4>
-                    <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
-                      <div>
-                        <span className="text-slate-500">成果成熟度 (Impact):</span>
-                        <span className="ml-2 font-medium">{selectedRecord.supervisorReview.impactScore} 分</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-500">證據狀態:</span>
-                        <span className="ml-2 font-medium">
-                          {selectedRecord.supervisorReview.evidenceStatus === 'Approved' ? '認可可回放證據' : 
-                           selectedRecord.supervisorReview.evidenceStatus === 'Rejected' ? '不符合標準' : 
-                           selectedRecord.supervisorReview.evidenceStatus === 'Pending' ? '待確認' : '未提供'}
-                        </span>
-                      </div>
-                    </div>
-                    {selectedRecord.supervisorReview.comments && (
-                      <div className="mb-4">
-                        <span className="block text-slate-500 text-sm mb-1">主管評語:</span>
-                        <p className="bg-white p-3 rounded border border-blue-100 text-sm text-slate-700">{selectedRecord.supervisorReview.comments}</p>
-                      </div>
                     )}
-                    <div className="flex justify-between items-center bg-white p-3 rounded-lg border border-slate-200 mt-4">
-                      <span className="text-sm font-medium">最終判定評級</span>
-                      <span className="font-bold text-xl text-blue-600">{selectedRecord.supervisorReview.finalGrade} 級</span>
-                    </div>
                   </div>
                 )}
               </div>
