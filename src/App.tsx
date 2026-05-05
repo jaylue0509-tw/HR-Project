@@ -26,9 +26,9 @@ function AppContent() {
         <div className="flex items-center gap-4">
           <div className="hidden md:flex flex-col items-end mr-2">
             <div className="flex items-center gap-2">
-              <span className={`w-2 h-2 rounded-full ${syncStatus === 'loading' ? 'bg-blue-400 animate-pulse' : syncStatus === 'error' ? 'bg-red-400' : 'bg-green-400'}`}></span>
+              <span className={`w-2 h-2 rounded-full ${syncStatus === 'loading' ? 'bg-blue-400 animate-pulse' : syncStatus === 'error' ? 'bg-yellow-400' : 'bg-green-400'}`}></span>
               <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">
-                {syncStatus === 'loading' ? '同步中...' : syncStatus === 'error' ? '同步失敗' : '系統已連線'}
+                {syncStatus === 'loading' ? '同步中...' : syncStatus === 'error' ? '暫時離線 (使用本機快取)' : '系統已連線'}
               </span>
             </div>
             {lastSyncTime && (

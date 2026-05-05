@@ -322,7 +322,7 @@ export default function SupervisorDashboard() {
                           <div className="text-sm space-y-1">
                             <div className="font-semibold">
                               動態判定等級：
-                              <span className="text-2xl font-black ml-2">{grade}</span>
+                              <span translate="no" className="text-2xl font-black ml-2">{grade}</span>
                               <span className="text-sm font-normal ml-1">級</span>
                             </div>
                             <div className="text-[11px] opacity-70 space-x-3">
