@@ -11,8 +11,7 @@ app.use(express.json());
 
 // 預設金鑰
 const keys = [
-  process.env.VITE_GEMINI_API_KEY_1 || "AIzaSyDBAzAxGvM2vzHW0cDNN-8XbFKUXsr9R4Q",
-  process.env.VITE_GEMINI_API_KEY_2 || "AIzaSyC-j2GDceRvzbqHf-CnY_GFYuqQ0uqzPDY"
+  process.env.VITE_GEMINI_API_KEY_1 || "AIzaSyB2tAlOs0BjKyRRTVH4kIB9Ss-JoUJhsJc"
 ].filter(Boolean);
 
 let currentIndex = 0;

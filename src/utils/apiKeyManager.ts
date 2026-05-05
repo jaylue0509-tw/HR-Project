@@ -24,8 +24,7 @@ export class ApiKeyManager {
     // 如果環境變數中沒有金鑰，則提供預設金鑰 (與 Proxy 同步)
     if (this.keys.length === 0) {
       this.keys = [
-        "AIzaSyDBAzAxGvM2vzHW0cDNN-8XbFKUXsr9R4Q",
-        "AIzaSyC-j2GDceRvzbqHf-CnY_GFYuqQ0uqzPDY"
+        "AIzaSyB2tAlOs0BjKyRRTVH4kIB9Ss-JoUJhsJc" // 新的 API Key
       ];
       console.log("[ApiKeyManager] 使用預設備用金鑰");
     }
