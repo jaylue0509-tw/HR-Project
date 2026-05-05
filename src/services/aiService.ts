@@ -1,76 +1,46 @@
-import { AssessmentData, AssessmentComputed } from '../types';
-
-const API_KEYS = [
-  'AIzaSyDBAzAxGvM2vzHW0cDNN-8XbFKUXsr9R4Q',
-  'AIzaSyC-j2GDceRvzbqHf-CnY_GFYuqQ0uqzPDY'
-];
-
-let currentKeyIndex = 0;
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { apiKeyManager } from "../utils/apiKeyManager";
 
 export const aiService = {
   /**
-   * 呼叫 Gemini API 生成主管評語建議
-   * 具備自動切換 API Key 機制（當 Key A 額度用盡或報錯時，自動切換至 Key B）
+   * 執行 AI 生成，若遇到 429 或 503 錯誤會自動切換 Key 並重試
    */
-  generateReviewSuggestion: async (data: AssessmentData, computed: AssessmentComputed): Promise<string> => {
-    const prompt = `
-      您是一位資深 HR 與管理顧問。請針對以下員工的 AI 職能自評資料，提供一段專業、具建設性且溫暖的主管評語建議。
-      
-      【員工自評數據】
-      - 常用工具: ${data.tools}
-      - 使用頻率: ${data.frequency}
-      - 機器人數量: ${data.botCount}
-      - 綜合分數 (0-10): ${computed.comprehensiveScore}
-      - 人才型態: ${computed.talentType}
-      - 核心強項: ${computed.coreStrengths}
-      - 量化成效說明: ${data.evidenceDesc}
-      
-      【評語要求】
-      1. 肯定其在 AI 應用上的具體努力。
-      2. 針對其人才型態給予職涯發展建議。
-      3. 語氣專業、客觀但帶有鼓勵。
-      4. 字數約 100-200 字。
-      請直接回傳評語內容即可。
-    `;
+  async generateContent(prompt: string, modelName: string = "gemini-1.5-flash") {
+    const maxAttempts = apiKeyManager.getTotalKeys();
+    let lastError = null;
 
-    return aiService.callGeminiWithRetry(prompt);
-  },
-
-  callGeminiWithRetry: async (prompt: string, retryCount = 0): Promise<string> => {
-    if (retryCount >= API_KEYS.length) {
-      throw new Error('所有 API Key 額度皆已用盡或發生錯誤。');
-    }
-
-    const apiKey = API_KEYS[currentKeyIndex];
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }]
-        })
-      });
-
-      if (response.status === 429 || response.status === 403) {
-        // 額度用盡或被拒絕，切換下一個 Key
-        console.warn(`API Key ${currentKeyIndex + 1} 額度可能已達上限，正在切換...`);
-        currentKeyIndex = (currentKeyIndex + 1) % API_KEYS.length;
-        return aiService.callGeminiWithRetry(prompt, retryCount + 1);
+    for (let i = 0; i < maxAttempts; i++) {
+      const apiKey = apiKeyManager.getCurrentKey();
+      if (!apiKey) {
+        throw new Error("找不到有效的 API Key");
       }
 
-      if (!response.ok) {
-        throw new Error(`Gemini API Error: ${response.statusText}`);
+      try {
+        console.log(`[AI Service] 使用第 ${apiKeyManager.getCurrentIndex() + 1} 把金鑰進行生成...`);
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: modelName });
+        
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        return response.text();
+        
+      } catch (error: any) {
+        lastError = error;
+        // 429: Too Many Requests, 503: Service Unavailable
+        if (error.message?.includes("429") || error.message?.includes("503") || error.message?.includes("quota")) {
+          console.warn(`[AI Service] 金鑰 #${apiKeyManager.getCurrentIndex() + 1} 失敗 (配額限制或服務不可用)。正在切換...`);
+          apiKeyManager.rotateKey();
+          // 稍微等待一下再重試
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } else {
+          // 其他不可修復的錯誤（如無效 API Key 等）
+          console.error("[AI Service] 發生非配額相關錯誤:", error.message);
+          throw error;
+        }
       }
-
-      const result = await response.json();
-      return result.candidates[0].content.parts[0].text;
-    } catch (error) {
-      console.error('AI 呼叫失敗:', error);
-      // 其他錯誤也嘗試切換 Key
-      currentKeyIndex = (currentKeyIndex + 1) % API_KEYS.length;
-      return aiService.callGeminiWithRetry(prompt, retryCount + 1);
     }
+
+    console.error("[AI Service] 所有可用的 API Keys 皆已嘗試但失敗。");
+    throw lastError || new Error("無法完成 AI 生成請求。");
   }
 };

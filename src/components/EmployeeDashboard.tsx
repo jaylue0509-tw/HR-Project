@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { dataService } from '../services/dataService';
 import { AssessmentData, AssessmentRecord, AssessmentScores } from '../types';
@@ -22,6 +22,7 @@ export default function EmployeeDashboard() {
   const [evidenceDesc, setEvidenceDesc] = useState('');
   const [evidenceLink, setEvidenceLink] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
     const loadData = () => {
@@ -29,7 +30,7 @@ export default function EmployeeDashboard() {
         const existing = dataService.getAssessmentByEmail(currentUser.email);
         if (existing) {
           setRecord(existing);
-          if (existing.data) {
+          if (existing.data && !hasLoadedRef.current) {
             setTools(existing.data.tools);
             setFrequency(existing.data.frequency);
             setBotNames(existing.data.botNames || '');
@@ -37,6 +38,7 @@ export default function EmployeeDashboard() {
             setScores(existing.data.scores);
             setEvidenceDesc(existing.data.evidenceDesc);
             setEvidenceLink(existing.data.evidenceLink);
+            hasLoadedRef.current = true;
           }
         }
       }
