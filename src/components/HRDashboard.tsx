@@ -19,21 +19,30 @@ export default function HRDashboard() {
   const [editUserForm, setEditUserForm] = useState<User | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const sanitizeRow = (row: any): User => {
+    const rawEmail = row['e-Mail帳號'] || row['e-mail帳號'] || row['Email'] || row['EMAIL'] || row['email'] || '';
+    const rawSupEmail = row['主管 e-Mail帳號'] || row['主管 e-mail帳號'] || row['主管Email'] || row['主管EMAIL'] || row['supervisorEmail'] || '';
+    
+    return {
+      company: String(row['公司別'] || row['公司'] || row['Company'] || '').trim(),
+      department: String(row['部門中文名稱'] || row['部門'] || row['Department'] || '').trim(),
+      name: String(row['中文姓名'] || row['姓名'] || row['Name'] || '').replace(/\s+/g, ''), // 姓名去除所有空白
+      title: String(row['職務中文名稱'] || row['職稱'] || row['Title'] || '').trim(),
+      email: String(rawEmail).replace(/\s+/g, '').toLowerCase(), // Email 轉小寫且去除所有空白
+      supervisorName: String(row['主管'] || row['主管姓名'] || row['Supervisor'] || '').replace(/\s+/g, ''),
+      supervisorEmail: String(rawSupEmail).replace(/\s+/g, '').toLowerCase(),
+    };
+  };
+
   const handleImport = () => {
     Papa.parse<any>(csvText, {
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
         try {
-          const importedUsers: User[] = results.data.map((row: any) => ({
-            company: row['公司別'] || row['公司'] || row['Company'] || '',
-            department: row['部門中文名稱'] || row['部門'] || row['Department'] || '',
-            name: row['中文姓名'] || row['姓名'] || row['Name'] || '',
-            title: row['職務中文名稱'] || row['職稱'] || row['Title'] || '',
-            email: (row['e-Mail帳號'] || row['e-mail帳號'] || row['Email'] || row['EMAIL'] || row['email'] || '').trim(),
-            supervisorName: row['主管'] || row['主管姓名'] || row['Supervisor'] || '',
-            supervisorEmail: (row['主管 e-Mail帳號'] || row['主管 e-mail帳號'] || row['主管Email'] || row['主管EMAIL'] || row['supervisorEmail'] || '').trim(),
-          }));
+          const importedUsers: User[] = results.data
+            .map(sanitizeRow)
+            .filter(u => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(u.email)); // 過濾掉沒有正確 Email 的無效列
           
           if (importedUsers.length === 0 || !importedUsers[0].email) {
             setMsg('資料格式不正確，找不到 Email 欄位。');
@@ -76,15 +85,9 @@ export default function HRDashboard() {
         const ws = wb.Sheets[wsname];
         const jsonData = XLSX.utils.sheet_to_json(ws);
         
-        const importedUsers: User[] = jsonData.map((row: any) => ({
-          company: row['公司別'] || row['公司'] || row['Company'] || '',
-          department: row['部門中文名稱'] || row['部門'] || row['Department'] || '',
-          name: row['中文姓名'] || row['姓名'] || row['Name'] || '',
-          title: row['職務中文名稱'] || row['職稱'] || row['Title'] || '',
-          email: (row['e-Mail帳號'] || row['e-mail帳號'] || row['Email'] || row['EMAIL'] || row['email'] || '').trim(),
-          supervisorName: row['主管'] || row['主管姓名'] || row['Supervisor'] || '',
-          supervisorEmail: (row['主管 e-Mail帳號'] || row['主管 e-mail帳號'] || row['主管Email'] || row['主管EMAIL'] || row['supervisorEmail'] || '').trim(),
-        }));
+        const importedUsers: User[] = jsonData
+          .map(sanitizeRow)
+          .filter(u => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(u.email));
 
         if (importedUsers.length === 0 || !importedUsers[0].email) {
           setMsg('Excel 資料格式不正確，找不到 Email 欄位。');
