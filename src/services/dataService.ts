@@ -1,23 +1,14 @@
 import { User, AssessmentRecord, AssessmentData, AssessmentComputed, SupervisorReview, AssessmentScores } from '../types';
 
+import { db } from './firebase';
+import { collection, doc, setDoc, writeBatch } from 'firebase/firestore';
+
 const USERS_KEY = 'hr_ai_users';
 const ASSESSMENTS_KEY = 'hr_ai_assessments';
 
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbzfXIXygziACBZpimcnJDgctcwmGeuhKCkWsUNy1CBSSbFqbHjq2ASfhs7rtvFIXVRX/exec';
-
 export const dataService = {
   initFromBackend: async () => {
-    try {
-      // 加上時間戳防止瀏覽器快取舊資料
-      const res = await fetch(`${GAS_URL}?t=${new Date().getTime()}`);
-      if (res.ok) {
-        const allData = await res.json();
-        if (allData.users) localStorage.setItem(USERS_KEY, JSON.stringify(allData.users));
-        if (allData.assessments) localStorage.setItem(ASSESSMENTS_KEY, JSON.stringify(allData.assessments));
-      }
-    } catch (e) {
-      console.error('Failed to init from GAS', e);
-    }
+    // 棄用，改由 AuthContext 使用 onSnapshot 處理
   },
 
   getUsers: (): User[] => {
@@ -27,17 +18,17 @@ export const dataService = {
 
   setUsers: async (users: User[]) => {
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
-    // 同步到 GAS
+    
     try {
-      const response = await fetch(GAS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'syncUsers', data: users })
+      const batch = writeBatch(db);
+      users.forEach(user => {
+        // 使用 email 作為 document ID，因為 email 是唯一的
+        const userRef = doc(db, 'users', user.email);
+        batch.set(userRef, user);
       });
-      const result = await response.json();
-      if (result.status === 'error') throw new Error(result.message);
+      await batch.commit();
     } catch (e) {
-      console.error('Failed to sync users to GAS', e);
+      console.error('Failed to sync users to Firebase', e);
       throw e;
     }
   },
@@ -63,17 +54,12 @@ export const dataService = {
       assessments.push(record);
     }
     localStorage.setItem(ASSESSMENTS_KEY, JSON.stringify(assessments));
-    // 同步到 GAS
+    
     try {
-      const response = await fetch(GAS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'syncAssessment', data: record })
-      });
-      const result = await response.json();
-      if (result.status === 'error') throw new Error(result.message);
+      const docRef = doc(db, 'assessments', record.userEmail);
+      await setDoc(docRef, record);
     } catch (e) {
-      console.error('Failed to sync assessment to GAS', e);
+      console.error('Failed to sync assessment to Firebase', e);
       throw e;
     }
   },

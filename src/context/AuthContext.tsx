@@ -2,7 +2,8 @@ import React, { createContext, useContext, useState, ReactNode, useEffect } from
 import { User, Role, HRAccount } from '../types';
 import { dataService } from '../services/dataService';
 
-const API = 'https://script.google.com/macros/s/AKfycbzfXIXygziACBZpimcnJDgctcwmGeuhKCkWsUNy1CBSSbFqbHjq2ASfhs7rtvFIXVRX/exec';
+import { db } from '../services/firebase';
+import { collection, onSnapshot, query } from 'firebase/firestore';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -12,7 +13,7 @@ interface AuthContextType {
   logout: () => void;
   users: User[];
   refreshUsers: () => void;
-  syncFromGAS: () => Promise<void>;
+  syncFromGAS: () => Promise<void>; // 保留以相容舊程式碼介面
   lastSyncTime: Date | null;
   syncStatus: 'idle' | 'loading' | 'error';
 }
@@ -27,42 +28,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
    const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'error'>('idle');
 
-  // 直接從 GAS 抓資料並更新 React state，確保跨用戶同步
+  // 直接從 Firebase 抓資料並監聽更新
   const syncFromGAS = React.useCallback(async () => {
-    setSyncStatus('loading');
-    try {
-      const res = await fetch(`${API}?t=${Date.now()}`);
-      if (!res.ok) {
-        setSyncStatus('error');
-        return;
-      }
-      const allData = await res.json();
-      if (allData.users && Array.isArray(allData.users)) {
-        localStorage.setItem('hr_ai_users', JSON.stringify(allData.users));
-        setUsers(allData.users);
-      }
-      if (allData.assessments && Array.isArray(allData.assessments)) {
-        localStorage.setItem('hr_ai_assessments', JSON.stringify(allData.assessments));
-      }
-      setLastSyncTime(new Date());
-      setSyncStatus('idle');
-      window.dispatchEvent(new Event('hr_data_changed'));
-    } catch (e) {
-      console.error('Sync failed', e);
-      setSyncStatus('error');
-      // fallback: 讀本機快取
-      setUsers(dataService.getUsers());
-    }
+    // 為了相容原本的 context 介面保留這個函式，但不做任何事
   }, []);
 
   useEffect(() => {
-    // 初始載入
-    syncFromGAS();
+    setSyncStatus('loading');
+    
+    // 監聽 users
+    const unsubscribeUsers = onSnapshot(query(collection(db, 'users')), (snapshot) => {
+      const allUsers: User[] = [];
+      snapshot.forEach((doc) => {
+        allUsers.push(doc.data() as User);
+      });
+      localStorage.setItem('hr_ai_users', JSON.stringify(allUsers));
+      setUsers(allUsers);
+      setLastSyncTime(new Date());
+      setSyncStatus('idle');
+      window.dispatchEvent(new Event('hr_data_changed'));
+    }, (error) => {
+      console.error('Failed to sync users:', error);
+      setSyncStatus('error');
+    });
 
-    // 每 15 秒自動從 GAS 拉一次最新資料
-    const interval = setInterval(syncFromGAS, 15000);
-    return () => clearInterval(interval);
-  }, [syncFromGAS]);
+    // 監聽 assessments
+    const unsubscribeAssessments = onSnapshot(query(collection(db, 'assessments')), (snapshot) => {
+      const allAssessments: any[] = [];
+      snapshot.forEach((doc) => {
+        allAssessments.push(doc.data());
+      });
+      localStorage.setItem('hr_ai_assessments', JSON.stringify(allAssessments));
+      setLastSyncTime(new Date());
+      setSyncStatus('idle');
+      window.dispatchEvent(new Event('hr_data_changed'));
+    }, (error) => {
+      console.error('Failed to sync assessments:', error);
+      setSyncStatus('error');
+    });
+
+    return () => {
+      unsubscribeUsers();
+      unsubscribeAssessments();
+    };
+  }, []);
 
   const refreshUsers = () => {
     setUsers(dataService.getUsers());
@@ -85,13 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setHrAccount(account);
           setCurrentRole('HR');
           setCurrentUser(null);
-          
-          // 非同步通知 GAS 有人登入（選用）
-          fetch(API, {
-            method: 'POST',
-            mode: 'no-cors',
-            body: JSON.stringify({ action: 'hrLogin', email, password })
-          }).catch(() => {});
+          // 不需特別呼叫 GAS，Firebase 會處理狀態
 
           return true;
         }
