@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { User, AssessmentRecord } from '../types';
@@ -80,6 +80,14 @@ export default function HRDashboard() {
   // Detail View State
   const [selectedRecord, setSelectedRecord] = useState<AssessmentRecord | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+
+  // Assessments — real-time sync: refreshed whenever Firebase pushes hr_data_changed
+  const [assessments, setAssessments] = useState<AssessmentRecord[]>(() => dataService.getAssessments());
+  useEffect(() => {
+    const refresh = () => setAssessments(dataService.getAssessments());
+    window.addEventListener('hr_data_changed', refresh);
+    return () => window.removeEventListener('hr_data_changed', refresh);
+  }, []);
 
   // Import State
   const [csvText, setCsvText] = useState('');
@@ -171,7 +179,7 @@ export default function HRDashboard() {
   };
 
   // --- Data Preparation ---
-  const allAssessments = dataService.getAssessments();
+  const allAssessments = assessments;
   const getRecord = (email: string) => allAssessments.find(a => a.userEmail === email);
   
   const filteredUsers = users.filter(u => 

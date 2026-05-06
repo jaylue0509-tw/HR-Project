@@ -26,7 +26,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [hrAccount, setHrAccount] = useState<HRAccount | null>(null);
    const [users, setUsers] = useState<User[]>([]);
    const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
-   const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'error'>('idle');
+   const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'error'>('loading'); // 預設 loading 直到兩個快照都回來
+   // 用 ref 追蹤有多少快照尚未完成初始載入
+   const pendingSnapshotsRef = React.useRef(2);
 
   // 直接從 Firebase 抓資料並監聽更新
   const syncFromGAS = React.useCallback(async () => {
@@ -34,6 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    pendingSnapshotsRef.current = 2; // reset on mount
     setSyncStatus('loading');
     
     // 監聽 users
@@ -45,10 +48,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('hr_ai_users', JSON.stringify(allUsers));
       setUsers(allUsers);
       setLastSyncTime(new Date());
-      setSyncStatus('idle');
+      // 只在還有 pending 的情況下 decrement
+      if (pendingSnapshotsRef.current > 0) {
+        pendingSnapshotsRef.current -= 1;
+        if (pendingSnapshotsRef.current === 0) setSyncStatus('idle');
+      }
       window.dispatchEvent(new Event('hr_data_changed'));
     }, (error) => {
       console.error('Failed to sync users:', error);
+      pendingSnapshotsRef.current = 0;
       setSyncStatus('error');
     });
 
@@ -60,10 +68,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       localStorage.setItem('hr_ai_assessments', JSON.stringify(allAssessments));
       setLastSyncTime(new Date());
-      setSyncStatus('idle');
+      // 只在還有 pending 的情況下 decrement
+      if (pendingSnapshotsRef.current > 0) {
+        pendingSnapshotsRef.current -= 1;
+        if (pendingSnapshotsRef.current === 0) setSyncStatus('idle');
+      }
       window.dispatchEvent(new Event('hr_data_changed'));
     }, (error) => {
       console.error('Failed to sync assessments:', error);
+      pendingSnapshotsRef.current = 0;
       setSyncStatus('error');
     });
 
