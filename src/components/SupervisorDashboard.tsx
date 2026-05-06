@@ -367,7 +367,7 @@ export default function SupervisorDashboard() {
         <div className="p-6 pb-4">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center text-white font-black text-sm shadow-lg shadow-violet-200">AI</div>
-            <span className="font-black text-slate-800 text-xl tracking-tight">AIPEX OSG</span>
+            <span className="font-black text-slate-800 text-lg tracking-tight">東森集團人才評核</span>
           </div>
         </div>
         
