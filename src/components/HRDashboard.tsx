@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import RadarProfile from './RadarProfile';
 import HRAccountManager from './HRAccountManager';
 import TalentProfile from './TalentProfile';
+import GradeAnalytics from './GradeAnalytics';
 
 // Mapping for 10 abilities
 const ABILITIES = [
@@ -73,7 +74,7 @@ const AbilityCard = ({ item, employeeScore, supervisorScore }: any) => {
 
 export default function HRDashboard() {
   const { users, hrAccount, logout, refreshUsers } = useAuth();
-  const [activeTab, setActiveTab] = useState<'home' | 'employees' | 'overview' | 'talent'>('talent');
+  const [activeTab, setActiveTab] = useState<'home' | 'employees' | 'overview' | 'talent' | 'analytics'>('talent');
   const [searchTerm, setSearchTerm] = useState('');
   
   // Detail View State
@@ -315,6 +316,10 @@ export default function HRDashboard() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"></path></svg>
               人才庫
             </button>
+            <button onClick={() => setActiveTab('analytics')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'analytics' ? 'bg-violet-600 text-white shadow-md shadow-violet-200/50' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+              等級統計分析
+            </button>
           </nav>
         </div>
       </div>
@@ -324,7 +329,7 @@ export default function HRDashboard() {
         <div className="px-8 py-6 flex justify-between items-end">
           <div>
             <h2 className="text-2xl font-bold text-slate-800">
-              {activeTab === 'home' ? 'HR 首頁' : activeTab === 'employees' ? '員工管理' : activeTab === 'overview' ? '評核總覽' : '人才庫'}
+              {activeTab === 'home' ? 'HR 首頁' : activeTab === 'employees' ? '員工管理' : activeTab === 'overview' ? '評核總覽' : activeTab === 'analytics' ? '等級統計分析' : '人才庫'}
             </h2>
             {activeTab === 'overview' && <p className="text-sm text-slate-500 mt-1">監控全集團評核參與進度、核定狀況與分數分佈</p>}
           </div>
@@ -340,6 +345,14 @@ export default function HRDashboard() {
           
           {activeTab === 'home' && (
              <div className="text-slate-500 text-center py-20">歡迎來到 HR 管理控制台。請從左側選單選擇功能。</div>
+          )}
+
+          {activeTab === 'analytics' && (
+            <GradeAnalytics
+              users={users}
+              records={dataService.getAssessments()}
+              title="全公司"
+            />
           )}
 
           {activeTab === 'employees' && (

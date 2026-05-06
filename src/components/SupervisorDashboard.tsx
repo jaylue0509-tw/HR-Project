@@ -4,12 +4,13 @@ import { dataService } from '../services/dataService';
 import { User, AssessmentRecord, SupervisorReview } from '../types';
 import RadarProfile from './RadarProfile';
 import TalentProfile from './TalentProfile';
+import GradeAnalytics from './GradeAnalytics';
 import * as XLSX from 'xlsx';
 
 export default function SupervisorDashboard() {
   const { currentUser, users } = useAuth();
   const [teamRecords, setTeamRecords] = useState<{ user: User, record?: AssessmentRecord }[]>([]);
-  const [activeTab, setActiveTab] = useState<'team' | 'overview' | 'talent'>('overview');
+  const [activeTab, setActiveTab] = useState<'team' | 'overview' | 'talent' | 'analytics'>('overview');
   const [selectedRecord, setSelectedRecord] = useState<AssessmentRecord | null>(null);
   
   // Edit mode states
@@ -386,6 +387,10 @@ export default function SupervisorDashboard() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path></svg>
               團隊人才庫
             </button>
+            <button onClick={() => setActiveTab('analytics')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'analytics' ? 'bg-violet-600 text-white shadow-md shadow-violet-200/50' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+              等級統計分析
+            </button>
           </nav>
         </div>
       </div>
@@ -395,7 +400,7 @@ export default function SupervisorDashboard() {
         {/* Top Header Equivalent */}
         <div className="px-8 py-6">
           <h2 className="text-2xl font-bold text-slate-800">
-            {activeTab === 'overview' ? '評核總覽' : activeTab === 'team' ? '團隊管理' : '人才庫'}
+            {activeTab === 'overview' ? '評核總覽' : activeTab === 'team' ? '團隊管理' : activeTab === 'analytics' ? '團隊等級統計' : '團隊人才庫'}
           </h2>
           {activeTab === 'overview' && <p className="text-sm text-slate-500 mt-1">監控團隊評核參與進度、核定狀況與分數分佈</p>}
         </div>
@@ -433,6 +438,14 @@ export default function SupervisorDashboard() {
                 </div>
               </div>
             </div>
+          )}
+
+          {activeTab === 'analytics' && (
+            <GradeAnalytics
+              users={filteredTeam.map(t => t.user)}
+              records={filteredTeam.filter(t => t.record).map(t => t.record!)}
+              title="我的團隊"
+            />
           )}
 
           {/* Search Bar */}
