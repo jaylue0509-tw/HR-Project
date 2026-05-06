@@ -140,6 +140,63 @@ export default function HRDashboard() {
     }
   };
 
+  const handleExportExcel = () => {
+    if (!hrAccount?.canExport) {
+      alert('您沒有匯出資料的權限');
+      return;
+    }
+
+    const exportData = users.map(u => {
+      const rec = dataService.getAssessmentByEmail(u.email);
+      const s = rec?.data?.scores;
+      const computed = rec?.computed;
+      const review = rec?.supervisorReview;
+      
+      return {
+        '公司別': u.company,
+        '部門': u.department,
+        '姓名': u.name,
+        '職稱': u.title,
+        'Email': u.email,
+        '主管姓名': u.supervisorName,
+        '狀態': !rec ? '未填寫' : rec.status === 'Reviewed' ? '已覆核' : '待覆核',
+        '填寫時間': rec?.submittedAt ? new Date(rec.submittedAt).toLocaleString() : '',
+        '人才型態': computed?.talentType || '',
+        '綜合分數': computed?.comprehensiveScore || '',
+        '文字生成': s?.textGeneration || '',
+        '內容整理': s?.contentOrganization || '',
+        '工作提效': s?.workEfficiency || '',
+        '流程優化': s?.processOptimization || '',
+        '分析判讀': s?.analysis || '',
+        '決策支援': s?.decisionSupport || '',
+        '創意生成': s?.ideaGeneration || '',
+        '專業應用': s?.professionalApplication || '',
+        '結構設計': s?.structureDesign || '',
+        '自動化建置': s?.botConstruction || '',
+        '常用工具': rec?.data?.tools || '',
+        '使用頻率': rec?.data?.frequency || '',
+        '機器人名稱': rec?.data?.botNames || '',
+        '機器人數': rec?.data?.botCount || '',
+        '量化成效': rec?.data?.evidenceDesc || '',
+        '證據連結': rec?.data?.evidenceLink || '',
+        '主管評語': review?.comments || '',
+        '主管評分(Impact)': review?.impactScore || '',
+        '證據認可狀態': review?.evidenceStatus || '',
+        '最終判定等級': review?.finalGrade || ''
+      };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "員工評核總表");
+    
+    // Auto-size columns roughly
+    const cols = Object.keys(exportData[0] || {}).map(k => ({ wch: Math.max(k.length + 5, 10) }));
+    ws['!cols'] = cols;
+
+    XLSX.writeFile(wb, `全公司AI職能評核表_${new Date().toLocaleDateString().replace(/\//g, '')}.xlsx`);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center mb-2">
@@ -154,13 +211,19 @@ export default function HRDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-4">
+          <button
+            onClick={handleExportExcel}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-slate-800 hover:bg-slate-900 rounded-lg transition-colors shadow-sm"
+          >
+            📥 一鍵匯出 Excel 報表
+          </button>
           <a
             href="https://docs.google.com/spreadsheets/d/1SH6dhN8LPuVyVgU1_y9UiBXFXVeK942quybsjFBZDgQ/edit?gid=1425362031#gid=1425362031"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-green-700 bg-green-100 hover:bg-green-200 rounded-lg transition-colors border border-green-200 shadow-sm"
           >
-            📊 開啟後台 Excel 資料庫
+            📊 開啟備份資料庫
           </a>
           <button onClick={logout} className="text-slate-500 hover:text-slate-800 font-medium text-sm transition-colors">登出</button>
         </div>
