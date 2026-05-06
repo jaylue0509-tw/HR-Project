@@ -6,141 +6,146 @@ import { dataService } from '../services/dataService';
 import { useAuth } from '../context/AuthContext';
 import RadarProfile from './RadarProfile';
 import HRAccountManager from './HRAccountManager';
+import TalentProfile from './TalentProfile';
+
+// Mapping for 10 abilities
+const ABILITIES = [
+  { key: 'contentOrganization', code: 'C02', title: '內容整理', desc: '利用 AI 整理、摘要、歸納大量資訊或文件' },
+  { key: 'workEfficiency', code: 'C03', title: '工作提效', desc: '利用 AI 加速日常工作任務，縮短完成時間' },
+  { key: 'processOptimization', code: 'C04', title: '流程優化', desc: '利用 AI 重新設計或改善既有工作流程' },
+  { key: 'analysis', code: 'C05', title: '分析判讀', desc: '利用 AI 分析資料、圖表或報告並產出洞察' },
+  { key: 'decisionSupport', code: 'C06', title: '決策支援', desc: '利用 AI 輔助評估選項、風險分析或決策建議' },
+  { key: 'ideaGeneration', code: 'C07', title: '創意生成', desc: '利用 AI 進行創意發想、概念生成或腦力激盪' },
+  { key: 'professionalApplication', code: 'C08', title: '專業應用', desc: '在特定專業領域 (法務/財務/設計等) 深度應用 AI' },
+  { key: 'textGeneration', code: 'C09', title: '簡報企劃', desc: '利用 AI 設計簡報架構、企劃書或結構化輸出' }, // Adjusted title to match screenshot
+  { key: 'structureDesign', code: 'C10', title: '結構設計', desc: '能系統化地建立 Prompt 系統或框架' },
+  { key: 'botConstruction', code: 'C11', title: '自動化建置', desc: '能建置機器人，或已可打造自動化工作流' }
+];
+
+const getFeedbackText = (score: number) => {
+  if (score >= 9) return '高度成熟，可複製方法並帶動他人';
+  if (score >= 7) return '應用熟練，能穩定產出高質量結果';
+  if (score >= 5) return '具備基礎能力，能應付日常需求';
+  return '仍在探索階段，需加強實作經驗';
+};
+
+const AbilityCard = ({ item, employeeScore, supervisorScore }: any) => {
+  // Convert 1-5 scale to 1-10 scale
+  const eScore10 = (employeeScore || 0) * 2;
+  const sScore10 = supervisorScore !== undefined ? supervisorScore * 2 : eScore10;
+  const percentage = (sScore10 / 10) * 100;
+  
+  return (
+    <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col gap-4">
+      <div className="flex justify-between items-start">
+        <div>
+          <div className="font-bold text-slate-800 text-sm mb-1">{item.code} {item.title}</div>
+          <div className="text-[11px] text-slate-500 leading-relaxed pr-2">{item.desc}</div>
+        </div>
+        <div className="text-right flex-shrink-0">
+          <div className="text-xs font-bold text-slate-800 flex items-center gap-1 justify-end">
+            <span>★ 員工自評</span>
+            <span>{eScore10.toFixed(1)}/10</span>
+          </div>
+        </div>
+      </div>
+      
+      <div className="mt-2">
+        <div className="flex justify-between text-xs mb-1">
+          <span className="font-bold text-slate-700">判核決定</span>
+          <span className="font-bold text-violet-600">{sScore10.toFixed(1)}/10</span>
+        </div>
+        <div className="text-[10px] text-slate-400 mb-3">主管覆核判定</div>
+        
+        {/* Slider track */}
+        <div className="relative h-2.5 bg-slate-100 rounded-full w-full">
+          <div className="absolute top-0 left-0 h-full bg-green-100 rounded-l-full" style={{ width: `${percentage}%` }}></div>
+          <div className="absolute top-1/2 -translate-y-1/2 w-5 h-5 bg-white border-[3px] border-violet-500 rounded-full shadow-sm" style={{ left: `calc(${percentage}% - 10px)` }}></div>
+        </div>
+      </div>
+      
+      <div className="bg-green-50/70 text-green-700 text-[11px] font-medium px-3 py-2.5 rounded-lg flex items-center gap-2 mt-auto border border-green-100">
+        <span className="text-green-500">◎</span> {getFeedbackText(sScore10)}
+      </div>
+    </div>
+  );
+};
 
 export default function HRDashboard() {
-  const { refreshUsers, users, hrAccount, logout } = useAuth();
+  const { users, hrAccount, logout, refreshUsers } = useAuth();
+  const [activeTab, setActiveTab] = useState<'home' | 'employees' | 'overview' | 'talent'>('talent');
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Detail View State
+  const [selectedRecord, setSelectedRecord] = useState<AssessmentRecord | null>(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+
+  // Import State
   const [csvText, setCsvText] = useState('');
   const [msg, setMsg] = useState('');
-  const [activeTab, setActiveTab] = useState<'import' | 'overview' | 'accounts'>('import');
-
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [selectedRecord, setSelectedRecord] = useState<AssessmentRecord | undefined>(undefined);
-  const [isEditingUser, setIsEditingUser] = useState(false);
-  const [editUserForm, setEditUserForm] = useState<User | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // --- Import Logic ---
   const sanitizeRow = (row: any): User => {
     const rawEmail = row['e-Mail帳號'] || row['e-mail帳號'] || row['Email'] || row['EMAIL'] || row['email'] || '';
     const rawSupEmail = row['主管 e-Mail帳號'] || row['主管 e-mail帳號'] || row['主管Email'] || row['主管EMAIL'] || row['supervisorEmail'] || '';
-    
     return {
       company: String(row['公司別'] || row['公司'] || row['Company'] || '').trim(),
       department: String(row['部門中文名稱'] || row['部門'] || row['Department'] || '').trim(),
-      name: String(row['中文姓名'] || row['姓名'] || row['Name'] || '').replace(/\s+/g, ''), // 姓名去除所有空白
+      name: String(row['中文姓名'] || row['姓名'] || row['Name'] || '').replace(/\s+/g, ''),
       title: String(row['職務中文名稱'] || row['職稱'] || row['Title'] || '').trim(),
-      email: String(rawEmail).replace(/\s+/g, '').toLowerCase(), // Email 轉小寫且去除所有空白
+      email: String(rawEmail).replace(/\s+/g, '').toLowerCase(),
       supervisorName: String(row['主管'] || row['主管姓名'] || row['Supervisor'] || '').replace(/\s+/g, ''),
       supervisorEmail: String(rawSupEmail).replace(/\s+/g, '').toLowerCase(),
     };
   };
 
-  const handleImport = () => {
+  const processImport = async (importedUsers: User[]) => {
+    const validUsers = importedUsers.filter(u => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(u.email));
+    if (validUsers.length === 0) {
+      setMsg('資料格式不正確，找不到 Email 欄位。');
+      return;
+    }
+    const existingUsers = dataService.getUsers();
+    const userMap = new Map<string, User>();
+    existingUsers.forEach(u => userMap.set(u.email, u));
+    validUsers.forEach(u => userMap.set(u.email, u));
+    const mergedUsers = Array.from(userMap.values());
+
+    setMsg('同步資料中...');
+    try {
+      await dataService.setUsers(mergedUsers);
+      refreshUsers();
+      setMsg(`成功合併導入 ${validUsers.length} 筆資料！總共 ${mergedUsers.length} 筆員工。`);
+    } catch {
+      setMsg('同步失敗，請檢查網路。');
+    }
+  };
+
+  const handleImportCSV = () => {
     Papa.parse<any>(csvText, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        try {
-          const importedUsers: User[] = results.data
-            .map(sanitizeRow)
-            .filter(u => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(u.email)); // 過濾掉沒有正確 Email 的無效列
-          
-          if (importedUsers.length === 0 || !importedUsers[0].email) {
-            setMsg('資料格式不正確，找不到 Email 欄位。');
-            return;
-          }
-
-          // 取得現有使用者並與新資料合併（以 email 為唯一鍵值）
-          const existingUsers = dataService.getUsers();
-          const userMap = new Map<string, User>();
-          existingUsers.forEach(u => userMap.set(u.email, u));
-          importedUsers.forEach(u => userMap.set(u.email, u));
-          const mergedUsers = Array.from(userMap.values());
-
-          setMsg('同步資料中...');
-          dataService.setUsers(mergedUsers).then(() => {
-            refreshUsers();
-            setMsg(`成功合併導入 ${importedUsers.length} 筆資料！總共 ${mergedUsers.length} 筆員工。`);
-            setCsvText('');
-          }).catch(() => {
-            setMsg('同步至後台失敗，請檢查網路連線。');
-          });
-        } catch (e) {
-          setMsg('解析失敗，請確認欄位名稱。');
-        }
-      }
+      header: true, skipEmptyLines: true,
+      complete: (results) => processImport(results.data.map(sanitizeRow))
     });
   };
 
   const handleExcelImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
-        const arrayBuffer = evt.target?.result as ArrayBuffer;
-        const data = new Uint8Array(arrayBuffer);
+        const data = new Uint8Array(evt.target?.result as ArrayBuffer);
         const wb = XLSX.read(data, { type: 'array' });
-        const wsname = wb.SheetNames[0];
-        const ws = wb.Sheets[wsname];
+        const ws = wb.Sheets[wb.SheetNames[0]];
         const jsonData = XLSX.utils.sheet_to_json(ws);
-        
-        const importedUsers: User[] = jsonData
-          .map(sanitizeRow)
-          .filter(u => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(u.email));
-
-        if (importedUsers.length === 0 || !importedUsers[0].email) {
-          setMsg('Excel 資料格式不正確，找不到 Email 欄位。');
-          return;
-        }
-
-        // 取得現有使用者並與新資料合併（以 email 為唯一鍵值）
-        const existingUsers = dataService.getUsers();
-        const userMap = new Map<string, User>();
-        existingUsers.forEach(u => userMap.set(u.email, u));
-        importedUsers.forEach(u => userMap.set(u.email, u));
-        const mergedUsers = Array.from(userMap.values());
-
-        setMsg('同步資料中...');
-        dataService.setUsers(mergedUsers).then(() => {
-          refreshUsers();
-          setMsg(`成功合併導入 ${importedUsers.length} 筆資料！總共 ${mergedUsers.length} 筆員工。`);
-          if (fileInputRef.current) fileInputRef.current.value = '';
-        }).catch(() => {
-          setMsg('同步至後台失敗，請檢查網路連線。');
-        });
+        processImport(jsonData.map(sanitizeRow));
+        if (fileInputRef.current) fileInputRef.current.value = '';
       } catch (err) {
-        setMsg('Excel 解析失敗，請確認檔案格式與欄位名稱。');
+        setMsg('Excel 解析失敗。');
       }
     };
     reader.readAsArrayBuffer(file);
-  };
-
-  const sampleCsv = `序號,公司別,部門中文名稱,員工編號,中文姓名,職務中文名稱,e-Mail帳號,主管,主管 e-Mail帳號
-3,東森得易購,人資行政部人力資源處,A6I,曾慈君,人資專員,abin.tseng@ehsn.com.tw,呂紹君,f1665@ettoday.net
-4,東森新媒體,管理部人資處,30573,黃乙軫,副理,sandy.bfc@ettoday.net,呂紹君,f1665@ettoday.net`;
-
-  const handleSelectUser = (u: User) => {
-    setSelectedUser(u);
-    setSelectedRecord(dataService.getAssessmentByEmail(u.email));
-    setIsEditingUser(false);
-  };
-
-  const handleSaveUserEdit = async () => {
-    if (!editUserForm || !selectedUser) return;
-    setMsg('儲存變更中...');
-    try {
-      const currentUsers = dataService.getUsers();
-      const updatedUsers = currentUsers.map(u => u.email === selectedUser.email ? editUserForm : u);
-      await dataService.setUsers(updatedUsers);
-      refreshUsers();
-      setSelectedUser(editUserForm);
-      setIsEditingUser(false);
-      setMsg('員工資料已更新！');
-      setTimeout(() => setMsg(''), 3000);
-    } catch (e) {
-      setMsg('更新失敗，請檢查網路。');
-    }
   };
 
   const handleExportExcel = () => {
@@ -148,467 +153,388 @@ export default function HRDashboard() {
       alert('您沒有匯出資料的權限');
       return;
     }
-
     const exportData = users.map(u => {
       const rec = dataService.getAssessmentByEmail(u.email);
-      const s = rec?.data?.scores;
-      const computed = rec?.computed;
-      const review = rec?.supervisorReview;
-      
       return {
-        '公司別': u.company,
-        '部門': u.department,
-        '姓名': u.name,
-        '職稱': u.title,
-        'Email': u.email,
-        '主管姓名': u.supervisorName,
+        '公司別': u.company, '部門': u.department, '姓名': u.name, 'Email': u.email,
         '狀態': !rec ? '未填寫' : rec.status === 'Reviewed' ? '已覆核' : '待覆核',
-        '填寫時間': rec?.submittedAt ? new Date(rec.submittedAt).toLocaleString() : '',
-        '人才型態': computed?.talentType || '',
-        '綜合分數': computed?.comprehensiveScore || '',
-        '文字生成': s?.textGeneration || '',
-        '內容整理': s?.contentOrganization || '',
-        '工作提效': s?.workEfficiency || '',
-        '流程優化': s?.processOptimization || '',
-        '分析判讀': s?.analysis || '',
-        '決策支援': s?.decisionSupport || '',
-        '創意生成': s?.ideaGeneration || '',
-        '專業應用': s?.professionalApplication || '',
-        '結構設計': s?.structureDesign || '',
-        '自動化建置': s?.botConstruction || '',
-        '常用工具': rec?.data?.tools || '',
-        '使用頻率': rec?.data?.frequency || '',
-        '機器人名稱': rec?.data?.botNames || '',
-        '機器人數': rec?.data?.botCount || '',
-        '量化成效': rec?.data?.evidenceDesc || '',
-        '證據連結': rec?.data?.evidenceLink || '',
-        '主管評語': review?.comments || '',
-        '主管評分(Impact)': review?.impactScore || '',
-        '證據認可狀態': review?.evidenceStatus || '',
-        '最終判定等級': review?.finalGrade || ''
+        '最終判定等級': rec?.supervisorReview?.finalGrade || '',
+        '綜合分數': rec?.computed?.comprehensiveScore || '',
+        '人才型態': rec?.computed?.talentType || ''
       };
     });
-
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "員工評核總表");
-    
-    // Auto-size columns roughly
-    const cols = Object.keys(exportData[0] || {}).map(k => ({ wch: Math.max(k.length + 5, 10) }));
-    ws['!cols'] = cols;
-
-    XLSX.writeFile(wb, `全公司AI職能評核表_${new Date().toLocaleDateString().replace(/\//g, '')}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, "HR人才庫");
+    XLSX.writeFile(wb, `人才庫匯出_${new Date().toLocaleDateString().replace(/\//g, '')}.xlsx`);
   };
 
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center mb-2">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-800">HR 管理控制台</h2>
-          <p className="text-sm text-slate-500 mt-1">
-            登入身分：<strong>{hrAccount?.name}</strong>
-            <span className="ml-3 space-x-2">
-              {hrAccount?.canImport ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700">✓ 可導入</span> : null}
-              {hrAccount?.canExport ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">✓ 可匯出</span> : null}
-            </span>
-          </p>
-        </div>
-        <div className="flex items-center gap-4">
-          <button
-            onClick={handleExportExcel}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-slate-800 hover:bg-slate-900 rounded-lg transition-colors shadow-sm"
-          >
-            📥 一鍵匯出 Excel 報表
-          </button>
-          <a
-            href="https://docs.google.com/spreadsheets/d/1SH6dhN8LPuVyVgU1_y9UiBXFXVeK942quybsjFBZDgQ/edit?gid=1425362031#gid=1425362031"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-green-700 bg-green-100 hover:bg-green-200 rounded-lg transition-colors border border-green-200 shadow-sm"
-          >
-            📊 開啟備份資料庫
-          </a>
-          <button onClick={logout} className="text-slate-500 hover:text-slate-800 font-medium text-sm transition-colors">登出</button>
-        </div>
-      </div>
+  // --- Data Preparation ---
+  const allAssessments = dataService.getAssessments();
+  const getRecord = (email: string) => allAssessments.find(a => a.userEmail === email);
+  
+  const filteredUsers = users.filter(u => 
+    u.name.includes(searchTerm) || u.department.includes(searchTerm) || u.email.includes(searchTerm)
+  );
 
-      <div className="flex space-x-4 border-b border-slate-200">
-        <button
-          onClick={() => setActiveTab('import')}
-          className={`py-2 px-4 border-b-2 font-medium text-sm transition-colors ${
-            activeTab === 'import' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'
-          }`}
-        >
-          1. 資料管理 / 導入
-        </button>
-        <button
-          onClick={() => setActiveTab('overview')}
-          className={`py-2 px-4 border-b-2 font-medium text-sm transition-colors ${
-            activeTab === 'overview' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'
-          }`}
-        >
-          2. 全公司評核總覽
-        </button>
-        {hrAccount?.canManageAccounts ? (
-          <button
-            onClick={() => setActiveTab('accounts')}
-            className={`py-2 px-4 border-b-2 font-medium text-sm transition-colors ${
-              activeTab === 'accounts' ? 'border-purple-600 text-purple-600' : 'border-transparent text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            3. 帳號管理 🔐
-          </button>
-        ) : null}
-      </div>
+  const stats = {
+    total: users.length,
+    completed: allAssessments.filter(a => a.status === 'Submitted' || a.status === 'Reviewed').length,
+    pending: allAssessments.filter(a => a.status === 'Submitted').length,
+    reviewed: allAssessments.filter(a => a.status === 'Reviewed').length,
+  };
+  const completionRate = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
 
-      {activeTab === 'import' && (
-        !hrAccount?.canImport ? (
-          <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-            <span className="text-5xl mb-4">🔒</span>
-            <p className="text-lg font-semibold">您的帳號沒有資料導入權限</p>
-            <p className="text-sm mt-2">請聯絡管理員開通此功能</p>
-          </div>
-        ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in">
-          <div className="apple-glass-thin rounded-[2rem] p-8">
-            <h3 className="text-xl font-display font-semibold text-slate-800 mb-4">資料導入區</h3>
-            <p className="text-sm text-slate-500 mb-4">
-              請貼上 CSV 格式內容，或使用 Excel 檔案匯入。<br/>
-              對應欄位名稱：（包含即可，多的欄位如「序號、員工編號」會自動略過）<br/>
-              <code>公司別, 部門中文名稱, 中文姓名, 職務中文名稱, e-Mail帳號, 主管, 主管 e-Mail帳號</code>
-            </p>
-            <textarea
-              value={csvText}
-              onChange={(e) => setCsvText(e.target.value)}
-              className="w-full h-48 rounded-xl apple-glass-ultra-thin border-white/60 p-4 text-sm focus:border-slate-400 focus:ring-1 focus:ring-slate-400 focus:bg-white/70 transition-all mb-4"
-              placeholder={sampleCsv}
-            />
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                onClick={handleImport}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium shadow-sm hover:bg-blue-700"
-              >
-                導入文字資料
+  // --- Detailed View (The "全貌" Page) ---
+  if (selectedRecord && selectedUser) {
+    return (
+      <div className="bg-[#F4F6F8] min-h-screen p-6 font-sans">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+            <div className="flex items-center gap-4">
+              <button onClick={() => setSelectedRecord(null)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
               </button>
-              
-              <input 
-                type="file" 
-                accept=".xlsx, .xls, .csv" 
-                ref={fileInputRef}
-                onChange={handleExcelImport}
-                className="hidden" 
-              />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium shadow-sm hover:bg-green-700"
-              >
-                匯入 Excel
-              </button>
-
-              <button
-                onClick={() => setCsvText(sampleCsv)}
-                className="px-4 py-2 bg-slate-100 text-slate-700 rounded-md text-sm font-medium shadow-sm hover:bg-slate-200"
-              >
-                載入測試資料
-              </button>
-              <button
-                onClick={() => {
-                  const testUsers = dataService.getUsers();
-                  if (testUsers.length > 0) {
-                     testUsers.forEach((u, idx) => {
-                       const randomScore = () => Math.floor(Math.random() * 3) + 2; // 2 to 4
-                       const scores = {
-                           textGeneration: randomScore(), contentOrganization: randomScore(), workEfficiency: randomScore(), processOptimization: randomScore(), analysis: randomScore(), decisionSupport: randomScore(), ideaGeneration: randomScore(), professionalApplication: randomScore(), structureDesign: randomScore(), botConstruction: randomScore()
-                       };
-                       const isReviewed = idx % 3 === 0; // 1/3 are reviewed
-                       
-                       const record: AssessmentRecord = {
-                         userEmail: u.email,
-                         status: isReviewed ? 'Reviewed' : 'Submitted',
-                         submittedAt: new Date().toISOString(),
-                         data: {
-                           tools: idx % 2 === 0 ? 'ChatGPT, Claude' : 'Midjourney, Stable Diffusion',
-                           frequency: idx % 2 === 0 ? '每天多次' : '每週幾次',
-                           botNames: idx % 2 === 0 ? 'HR助理, 週報小幫手' : '',
-                           botCount: idx % 2 === 0 ? 2 : 0,
-                           scores,
-                           evidenceDesc: '優化流程，提升效率 20%',
-                           evidenceLink: 'https://example.com/evidence'
-                         },
-                         computed: dataService.computeAssessment(scores)
-                       };
-                       
-                       if (isReviewed) {
-                         // Mock supervisor review
-                         const review = {
-                           impactScore: Math.floor(Math.random() * 3) + 2,
-                           evidenceStatus: 'Approved' as const,
-                           comments: '表現不錯，繼續保持。',
-                           reviewedAt: new Date().toISOString(),
-                           finalGrade: 'B' as any
-                         };
-                         review.finalGrade = dataService.calculateFinalGrade(record.computed!, review);
-                         record.supervisorReview = review;
-                       }
-                       
-                       dataService.saveAssessment(record);
-                     });
-                     
-                     setMsg(`已為 ${testUsers.length} 位員工自動產出測試評核紀錄！`);
-                  } else {
-                     setMsg('請先匯入名單資料，再自動產生測試評核！');
-                  }
-                }}
-                className="px-4 py-2 bg-indigo-500/80 backdrop-blur-md text-white rounded-xl text-sm font-medium shadow-md hover:bg-indigo-600 border border-white/20 transition-all"
-              >
-                自動產生全體測試評核
-              </button>
-              {msg && <span className="text-sm text-green-600 font-medium">{msg}</span>}
+              <div>
+                <h2 className="text-xl font-bold text-slate-800">{selectedUser.name} <span className="text-sm font-normal text-slate-500 ml-2">{selectedUser.department} / {selectedUser.title}</span></h2>
+              </div>
+            </div>
+            <div className="flex gap-4 items-center">
+              <div className="text-right">
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">綜合評核分數</div>
+                <div className="text-2xl font-black text-violet-600">{selectedRecord.computed?.comprehensiveScore} <span className="text-sm font-medium text-slate-400">/ 10</span></div>
+              </div>
+              <div className="w-px h-10 bg-slate-200"></div>
+              <div className="text-right">
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">最終判定</div>
+                <div className="text-2xl font-black text-slate-800">{selectedRecord.supervisorReview?.finalGrade || '-'} 級</div>
+              </div>
             </div>
           </div>
 
-          <div className="apple-glass-thin rounded-[2rem] p-8 flex flex-col">
-            <h3 className="text-xl font-display font-semibold text-slate-800 mb-4">目前員工名單 ({users.length})</h3>
-            <div className="overflow-y-auto flex-1 max-h-64 border rounded-md">
-              <table className="min-w-full divide-y divide-slate-200 text-sm">
-                <thead className="bg-white/30 backdrop-blur-md border-b border-white/40">
-                  <tr>
-                    <th className="px-4 py-2 text-left font-semibold text-slate-600">姓名</th>
-                    <th className="px-4 py-2 text-left font-semibold text-slate-600">公司信箱</th>
-                    <th className="px-4 py-2 text-left font-semibold text-slate-600">部門</th>
-                    <th className="px-4 py-2 text-left font-semibold text-slate-600">主管 (姓名 / 公司信箱)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/40 bg-transparent">
-                  {users.map((u, i) => (
-                    <tr key={i}>
-                      <td className="px-4 py-2 whitespace-nowrap">{u.name}</td>
-                      <td className="px-4 py-2 whitespace-nowrap text-slate-500">{u.email}</td>
-                      <td className="px-4 py-2 whitespace-nowrap">{u.department}</td>
-                      <td className="px-4 py-2 whitespace-nowrap text-slate-500">
-                        {u.supervisorName}<br/><span className="text-xs">{u.supervisorEmail}</span>
-                      </td>
-                    </tr>
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            {/* Left Column: Abilities Grid */}
+            <div className="xl:col-span-2 space-y-6">
+              <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+                <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+                  <h3 className="font-bold text-lg text-slate-800">能力覆核評分 (1-10)</h3>
+                  <span className="text-xs text-slate-500 flex items-center gap-1">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    拖曳滑桿調整各項能力的分數 (主管權限)
+                  </span>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {ABILITIES.map(item => (
+                    <AbilityCard 
+                      key={item.key} 
+                      item={item} 
+                      employeeScore={selectedRecord.data?.scores?.[item.key as keyof typeof selectedRecord.data.scores]}
+                      supervisorScore={selectedRecord.data?.scores?.[item.key as keyof typeof selectedRecord.data.scores]} // In future, this could be separate
+                    />
                   ))}
-                  {users.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="px-4 py-6 text-center text-slate-500">
-                        尚未導入任何資料
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: Radar & Evidence */}
+            <div className="space-y-6">
+              <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+                <h3 className="font-bold text-slate-800 mb-4">自評雷達圖</h3>
+                <div className="h-64">
+                  {selectedRecord.computed && <RadarProfile computed={selectedRecord.computed} />}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+                <h3 className="font-bold text-slate-800 mb-4">成果與證據</h3>
+                <div className="space-y-4">
+                  <div>
+                    <div className="text-xs font-bold text-slate-400 mb-1">量化成效</div>
+                    <div className="text-sm text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-100">{selectedRecord.data?.evidenceDesc || '未提供'}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-400 mb-1">連結 / 附件</div>
+                    {selectedRecord.data?.evidenceLink ? (
+                      <div className="space-y-2">
+                        {selectedRecord.data.evidenceLink.split('\n').filter(link => link.trim()).map((link, i) => (
+                          <a key={i} href={link.trim().startsWith('http') ? link.trim() : `https://${link.trim()}`} 
+                             target="_blank" rel="noopener noreferrer" 
+                             className="text-violet-600 hover:text-violet-700 hover:underline block break-all text-xs bg-violet-50 p-2.5 rounded-lg border border-violet-100 transition-colors">
+                            🔗 {link.trim()}
+                          </a>
+                        ))}
+                      </div>
+                    ) : <span className="text-sm text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-100 block">未提供</span>}
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+                <h3 className="font-bold text-slate-800 mb-4">主管評語</h3>
+                <div className="text-sm text-slate-700 bg-blue-50 p-4 rounded-xl border border-blue-100 whitespace-pre-wrap">
+                  {selectedRecord.supervisorReview?.comments || '主管尚未填寫評語'}
+                </div>
+              </div>
             </div>
           </div>
         </div>
-        )
-      )}
+      </div>
+    );
+  }
 
-      {activeTab === 'overview' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in">
-          {/* Left: Team List */}
-          <div className="lg:col-span-1 apple-glass-thin rounded-[2rem] p-0 overflow-hidden flex flex-col h-[700px]">
-            <div className="p-6 bg-slate-50/50 backdrop-blur border-b border-slate-200">
-               <h3 className="font-display text-xl font-semibold text-slate-800">全體員工列表</h3>
-            </div>
-            <div className="overflow-y-auto flex-1 p-2 space-y-1 bg-white/20 backdrop-blur-sm">
-              {users.map((u, idx) => {
-                const rec = dataService.getAssessmentByEmail(u.email);
-                const statusColor = !rec ? 'bg-slate-100 text-slate-500' 
-                                  : rec.status === 'Reviewed' ? 'bg-green-100 text-green-700' 
-                                  : 'bg-blue-100 text-blue-700';
-                const statusText = !rec ? '未送出' : rec.status === 'Reviewed' ? `已覆核 (${rec.supervisorReview?.finalGrade} 級)` : '待主管覆核';
+  // --- Main Layout ---
+  return (
+    <div className="flex h-[calc(100vh-80px)] -mx-6 -my-6 bg-[#F4F6F8]">
+      {/* Left Sidebar */}
+      <div className="w-64 bg-white border-r border-slate-200 flex-shrink-0 flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10">
+        <div className="p-6 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center text-white font-black text-sm shadow-lg shadow-violet-200">AI</div>
+            <span className="font-black text-slate-800 text-xl tracking-tight">AIPEX OSG</span>
+          </div>
+        </div>
+        
+        <div className="px-6 py-2">
+          <div className="text-[11px] font-bold text-slate-400 mb-3 uppercase tracking-wider">功能選單</div>
+          <nav className="space-y-1.5">
+            <button onClick={() => setActiveTab('home')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'home' ? 'bg-violet-600 text-white shadow-md shadow-violet-200/50' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+              HR 首頁
+            </button>
+            <button onClick={() => setActiveTab('employees')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'employees' ? 'bg-violet-600 text-white shadow-md shadow-violet-200/50' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+              員工管理
+            </button>
+            <button onClick={() => setActiveTab('overview')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'overview' ? 'bg-violet-600 text-white shadow-md shadow-violet-200/50' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+              評核總覽
+            </button>
+            <button onClick={() => setActiveTab('talent')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'talent' ? 'bg-violet-600 text-white shadow-md shadow-violet-200/50' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"></path></svg>
+              人才庫
+            </button>
+          </nav>
+        </div>
+      </div>
 
-                return (
-                  <button 
-                    key={idx} 
-                    onClick={() => handleSelectUser(u)}
-                    className={`w-full text-left p-4 rounded-2xl border transition-all duration-300 ${
-                      selectedUser?.email === u.email 
-                        ? 'bg-white border-slate-300 shadow-md scale-[1.02] z-10 relative' 
-                        : 'apple-glass-ultra-thin hover:bg-white/60 hover:shadow-sm'
-                    }`}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="font-semibold text-slate-800 text-sm">{u.name} <span className="text-slate-500 font-normal ml-1">({u.department})</span></div>
-                        <div className="text-xs text-slate-500">{u.title} • 主管: {u.supervisorName} ({u.supervisorEmail})</div>
-                      </div>
-                      <span className={`text-[10px] px-2 py-1 rounded-full font-medium ${statusColor}`}>
-                        {statusText}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
-              {users.length === 0 && (
-                <div className="p-4 text-center text-sm text-slate-500">
-                  尚未導入任何員工資料
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col overflow-y-auto">
+        <div className="px-8 py-6 flex justify-between items-end">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-800">
+              {activeTab === 'home' ? 'HR 首頁' : activeTab === 'employees' ? '員工管理' : activeTab === 'overview' ? '評核總覽' : '人才庫'}
+            </h2>
+            {activeTab === 'overview' && <p className="text-sm text-slate-500 mt-1">監控全集團評核參與進度、核定狀況與分數分佈</p>}
+          </div>
+          {activeTab === 'talent' && (
+            <button onClick={handleExportExcel} className="px-4 py-2 bg-white text-slate-700 font-medium rounded-lg border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+              匯出
+            </button>
+          )}
+        </div>
+
+        <div className="px-8 pb-8 space-y-6">
+          
+          {activeTab === 'home' && (
+             <div className="text-slate-500 text-center py-20">歡迎來到 HR 管理控制台。請從左側選單選擇功能。</div>
+          )}
+
+          {activeTab === 'employees' && (
+            <>
+              {hrAccount?.canImport && (
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-6">
+                  <h3 className="font-bold text-slate-800 mb-4">資料導入區</h3>
+                  <textarea value={csvText} onChange={(e) => setCsvText(e.target.value)} className="w-full h-32 rounded-xl border-slate-300 p-4 text-sm focus:border-violet-400 focus:ring-1 focus:ring-violet-400 bg-slate-50 transition-all mb-4" placeholder="貼上 CSV 內容..."/>
+                  <div className="flex gap-3">
+                    <button onClick={handleImportCSV} className="px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-900">導入文字資料</button>
+                    <input type="file" accept=".xlsx, .xls, .csv" ref={fileInputRef} onChange={handleExcelImport} className="hidden" />
+                    <button onClick={() => fileInputRef.current?.click()} className="px-4 py-2 bg-white text-slate-700 border border-slate-300 rounded-lg text-sm font-medium hover:bg-slate-50">匯入 Excel</button>
+                    {msg && <span className="text-sm text-green-600 font-medium ml-2 self-center">{msg}</span>}
+                  </div>
                 </div>
               )}
-            </div>
-          </div>
+              {hrAccount?.canManageAccounts && <HRAccountManager />}
+            </>
+          )}
 
-          {/* Right: Review detail */}
-          <div className="lg:col-span-2 apple-glass-thin rounded-[2rem] p-8 flex flex-col h-[700px] overflow-y-auto relative">
-            {!selectedUser ? (
-              <div className="flex-1 flex items-center justify-center text-slate-400">
-                 請由左側選擇一名員工以檢視或編輯狀態
-              </div>
-            ) : isEditingUser && editUserForm ? (
-              <div className="animate-in fade-in space-y-4">
-                <div className="flex justify-between items-center border-b border-slate-200 pb-4">
-                  <h3 className="text-lg font-semibold text-slate-800">編輯員工資料</h3>
-                  <div className="space-x-2">
-                    <button onClick={() => setIsEditingUser(false)} className="px-3 py-1.5 text-sm bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200">取消</button>
-                    <button onClick={handleSaveUserEdit} className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">儲存變更</button>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <label className="block text-slate-500 mb-1">姓名</label>
-                    <input type="text" value={editUserForm.name} onChange={e => setEditUserForm({...editUserForm, name: e.target.value})} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-blue-500" />
-                  </div>
-                  <div>
-                    <label className="block text-slate-500 mb-1">公司信箱 <span className="text-xs text-red-400">(修改可能影響歷史紀錄)</span></label>
-                    <input type="email" value={editUserForm.email} onChange={e => setEditUserForm({...editUserForm, email: e.target.value})} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-blue-500" />
-                  </div>
-                  <div>
-                    <label className="block text-slate-500 mb-1">公司別</label>
-                    <input type="text" value={editUserForm.company} onChange={e => setEditUserForm({...editUserForm, company: e.target.value})} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-blue-500" />
-                  </div>
-                  <div>
-                    <label className="block text-slate-500 mb-1">部門</label>
-                    <input type="text" value={editUserForm.department} onChange={e => setEditUserForm({...editUserForm, department: e.target.value})} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-blue-500" />
-                  </div>
-                  <div>
-                    <label className="block text-slate-500 mb-1">職稱</label>
-                    <input type="text" value={editUserForm.title} onChange={e => setEditUserForm({...editUserForm, title: e.target.value})} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-blue-500" />
-                  </div>
-                  <div></div>
-                  <div>
-                    <label className="block text-slate-500 mb-1">主管姓名</label>
-                    <input type="text" value={editUserForm.supervisorName} onChange={e => setEditUserForm({...editUserForm, supervisorName: e.target.value})} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-blue-500" />
-                  </div>
-                  <div>
-                    <label className="block text-slate-500 mb-1">主管公司信箱</label>
-                    <input type="email" value={editUserForm.supervisorEmail} onChange={e => setEditUserForm({...editUserForm, supervisorEmail: e.target.value})} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-1 focus:ring-blue-500" />
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col h-full">
-                <div className="border-b border-slate-200 pb-4 mb-4 flex justify-between items-start">
-                  <div>
-                    <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                      {selectedUser.name}
-                      <button 
-                        onClick={() => { setEditUserForm(selectedUser); setIsEditingUser(true); }}
-                        className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded-md font-normal border border-slate-200 transition-colors"
-                      >
-                        ✏️ 編輯資料
-                      </button>
-                    </h3>
-                    <div className="text-sm text-slate-500 mt-1">
-                      {selectedUser.company} • {selectedUser.department} • {selectedUser.title}
+          {(activeTab === 'overview' || activeTab === 'talent') && (
+            <>
+              {activeTab === 'overview' && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold text-slate-500 mb-1">完成率</div>
+                      <div className="text-2xl font-bold text-slate-800">{completionRate}%</div>
                     </div>
                   </div>
-                  <div className="text-right text-sm text-slate-500">
-                    <div>主管: {selectedUser.supervisorName}</div>
-                    <div className="text-xs">{selectedUser.supervisorEmail}</div>
+                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold text-slate-500 mb-1">待主管審核</div>
+                      <div className="text-2xl font-bold text-slate-800">{stats.pending}</div>
+                    </div>
+                  </div>
+                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold text-slate-500 mb-1">已核定</div>
+                      <div className="text-2xl font-bold text-slate-800">{stats.reviewed}</div>
+                    </div>
                   </div>
                 </div>
+              )}
 
-                {!selectedRecord ? (
-                  <div className="flex-1 flex items-center justify-center flex-col text-slate-500">
-                    <div className="text-lg font-semibold mb-2">尚未提報</div>
-                    <div>該名員工尚未送出 AI 職能自評。</div>
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    <div className="flex justify-between items-end">
-                       <div>
-                          <span className="text-sm font-semibold text-slate-700">人才型態：</span>
-                          <span className="text-sm text-slate-600 bg-slate-100 px-2 py-1 rounded">{selectedRecord.computed?.talentType}</span>
-                       </div>
-                       <div className="text-right">
-                          <div className="text-xs text-slate-500 mb-1">系統綜合分數</div>
-                          <div className="text-2xl font-bold text-blue-600">{selectedRecord.computed?.comprehensiveScore}</div>
-                       </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-6">
-                       <div>
-                          <h4 className="font-semibold text-slate-800 mb-2 border-l-4 border-blue-500 pl-2 text-sm">自評雷達圖</h4>
-                          <div className="bg-slate-50 rounded-lg p-2 h-64">
-                            {selectedRecord.computed && <RadarProfile computed={selectedRecord.computed} />}
-                          </div>
-                       </div>
-                       <div className="space-y-4">
-                          <div>
-                            <h4 className="font-semibold text-slate-800 mb-2 border-l-4 border-blue-500 pl-2 text-sm">成果與證據</h4>
-                            <div className="bg-white/50 backdrop-blur-sm rounded-xl p-3 text-sm border border-white/60 h-64 overflow-y-auto space-y-3">
-                               <div>
-                                 <div className="text-xs text-slate-500 font-medium">量化成效</div>
-                                 <p className="mt-1 text-slate-800">{selectedRecord.data?.evidenceDesc || '未提報'}</p>
-                               </div>
-                               <div>
-                                 <div className="text-xs text-slate-500 font-medium">連結/附件</div>
-                                 {selectedRecord.data?.evidenceLink ? (
-                                   <a href={selectedRecord.data.evidenceLink} target="_blank" rel="noopener noreferrer" className="mt-1 text-blue-600 hover:underline block break-all">
-                                     {selectedRecord.data.evidenceLink}
-                                   </a>
-                                 ) : <span className="mt-1 text-slate-800 block">未提供</span>}
-                               </div>
-                               <div>
-                                 <div className="text-xs text-slate-500 font-medium">常用工具</div>
-                                 <p className="mt-1 text-slate-800">{selectedRecord.data?.tools} ({selectedRecord.data?.frequency})</p>
-                               </div>
-                            </div>
-                          </div>
-                       </div>
-                    </div>
-
-                    {selectedRecord.supervisorReview && (
-                      <div className="bg-blue-50/50 rounded-xl p-5 border border-blue-100 mt-4">
-                        <h4 className="font-semibold text-slate-800 mb-4 border-l-4 border-blue-600 pl-2">主管覆核結果</h4>
-                        <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
-                          <div>
-                            <span className="text-slate-500">成果成熟度 (Impact):</span>
-                            <span className="ml-2 font-medium">{selectedRecord.supervisorReview.impactScore} 分</span>
-                          </div>
-                          <div>
-                            <span className="text-slate-500">證據狀態:</span>
-                            <span className="ml-2 font-medium">
-                              {selectedRecord.supervisorReview.evidenceStatus === 'Approved' ? '認可可回放證據' : 
-                               selectedRecord.supervisorReview.evidenceStatus === 'Rejected' ? '不符合標準' : 
-                               selectedRecord.supervisorReview.evidenceStatus === 'Pending' ? '待確認' : '未提供'}
-                            </span>
-                          </div>
-                        </div>
-                        {selectedRecord.supervisorReview.comments && (
-                          <div className="mb-4">
-                            <span className="block text-slate-500 text-sm mb-1">主管評語:</span>
-                            <p className="bg-white p-3 rounded border border-blue-100 text-sm text-slate-700">{selectedRecord.supervisorReview.comments}</p>
-                          </div>
-                        )}
-                        <div className="flex justify-between items-center bg-white p-3 rounded-lg border border-slate-200 mt-4">
-                          <span className="text-sm font-medium">最終判定評級</span>
-                          <span className="font-bold text-xl text-blue-600">{selectedRecord.supervisorReview.finalGrade} 級</span>
-                        </div>
-                      </div>
-                    )}
+              {/* Search Bar */}
+              <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
+                <div className="flex-1 relative">
+                  <svg className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                  <input 
+                    type="text" 
+                    placeholder={activeTab === 'overview' ? "搜尋員工、部門、評核名稱..." : "搜尋姓名 / 部門"}
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    className="w-full pl-12 pr-4 py-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-violet-500 text-sm outline-none transition-shadow"
+                  />
+                </div>
+                {activeTab === 'talent' && (
+                  <div className="flex gap-2">
+                    <select className="px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 text-sm text-slate-600 outline-none focus:ring-2 focus:ring-violet-500">
+                      <option>全部等級</option>
+                      <option>A級</option>
+                      <option>B級</option>
+                    </select>
+                    <select className="px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 text-sm text-slate-600 outline-none focus:ring-2 focus:ring-violet-500">
+                      <option>全部 (人才型態)</option>
+                    </select>
+                    <select className="px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 text-sm text-slate-600 outline-none focus:ring-2 focus:ring-violet-500">
+                      <option>全部 (事業體)</option>
+                    </select>
                   </div>
                 )}
+                {activeTab === 'overview' && (
+                  <button className="px-6 py-3 bg-slate-50 hover:bg-slate-100 text-slate-600 font-medium rounded-xl border border-slate-200 transition-colors flex items-center gap-2 text-sm">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                    進階篩選
+                  </button>
+                )}
               </div>
-            )}
-          </div>
+
+              {/* Main Table */}
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-slate-50 text-slate-500 border-b border-slate-100 font-medium">
+                    {activeTab === 'overview' && (
+                      <tr>
+                        <th className="px-6 py-4">受評人</th>
+                        <th className="px-6 py-4">評核期間 / 名稱</th>
+                        <th className="px-6 py-4">狀態</th>
+                        <th className="px-6 py-4">最終分數</th>
+                        <th className="px-6 py-4">更新日期</th>
+                        <th className="px-6 py-4 text-center">操作</th>
+                      </tr>
+                    )}
+                    {activeTab === 'talent' && (
+                      <tr>
+                        <th className="px-6 py-4">員工姓名</th>
+                        <th className="px-6 py-4">部門</th>
+                        <th className="px-6 py-4">等級</th>
+                        <th className="px-6 py-4">綜合分數</th>
+                        <th className="px-6 py-4">人才型態</th>
+                        <th className="px-6 py-4">標籤</th>
+                        <th className="px-6 py-4 text-center">操作</th>
+                      </tr>
+                    )}
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredUsers.map((u, idx) => {
+                      const record = getRecord(u.email);
+                      const isReviewed = record?.status === 'Reviewed';
+                      if (activeTab === 'talent' && !isReviewed) return null; // Talent pool only shows reviewed
+                      
+                      const grade = record?.supervisorReview?.finalGrade || '-';
+                      const score = record?.computed?.comprehensiveScore || '-';
+                      const talentType = record?.computed?.talentType || '未定義';
+                      
+                      const gradeColor: Record<string, string> = {
+                        A: 'text-purple-700',
+                        B: 'text-emerald-600',
+                        C: 'text-blue-600',
+                        D: 'text-orange-500',
+                        E: 'text-red-500',
+                      };
+
+                      if (activeTab === 'overview') {
+                        return (
+                          <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="px-6 py-4">
+                              <div className="font-semibold text-slate-800">{u.name}</div>
+                              <div className="text-xs text-slate-400 mt-0.5">{u.department}</div>
+                            </td>
+                            <td className="px-6 py-4 text-slate-600">未知期間</td>
+                            <td className="px-6 py-4">
+                              {isReviewed ? <span className="text-slate-600 font-medium">已核定</span> : 
+                               record ? <span className="text-orange-600 font-medium">待審核</span> : 
+                               <span className="text-slate-400">未填寫</span>}
+                            </td>
+                            <td className="px-6 py-4 font-medium text-slate-700">{score}</td>
+                            <td className="px-6 py-4 text-slate-500">None</td>
+                            <td className="px-6 py-4 text-center">
+                              <button 
+                                disabled={!record}
+                                onClick={() => { setSelectedRecord(record!); setSelectedUser(u); }}
+                                className="px-4 py-1.5 border border-slate-200 text-slate-600 hover:text-violet-600 hover:border-violet-300 hover:bg-violet-50 rounded-lg text-xs font-semibold transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                              >
+                                查看明細
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      }
+
+                      if (activeTab === 'talent') {
+                        return (
+                          <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="px-6 py-4 font-bold text-slate-800">{u.name}</td>
+                            <td className="px-6 py-4 text-slate-600">{u.department}</td>
+                            <td className="px-6 py-4">
+                               <span className={`font-black ${gradeColor[grade] || 'text-slate-600'}`}>{grade} 級</span>
+                            </td>
+                            <td className="px-6 py-4 font-bold text-violet-600">{score}</td>
+                            <td className="px-6 py-4 text-slate-600 text-xs font-medium">{talentType}</td>
+                            <td className="px-6 py-4">
+                              <div className="flex gap-1">
+                                {record?.data?.tools.split(',').slice(0,2).map(t => t.trim()).filter(Boolean).map((t, i) => (
+                                  <span key={i} className="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded">{t}</span>
+                                ))}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <button onClick={() => { setSelectedRecord(record!); setSelectedUser(u); }} className="px-4 py-1.5 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-xs font-semibold transition-colors shadow-sm">
+                                查看分析
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      }
+                      return null;
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </div>
-      )}
-      {activeTab === 'accounts' && (
-        <HRAccountManager />
-      )}
+      </div>
     </div>
   );
 }

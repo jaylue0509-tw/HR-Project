@@ -20,7 +20,7 @@ export default function EmployeeDashboard() {
     structureDesign: 3, botConstruction: 3
   });
   const [evidenceDesc, setEvidenceDesc] = useState('');
-  const [evidenceLink, setEvidenceLink] = useState('');
+  const [evidenceLinks, setEvidenceLinks] = useState<string[]>(['']);
   const [submitting, setSubmitting] = useState(false);
   const hasLoadedRef = useRef(false);
 
@@ -37,7 +37,7 @@ export default function EmployeeDashboard() {
             setBotCount(existing.data.botCount || 0);
             setScores(existing.data.scores);
             setEvidenceDesc(existing.data.evidenceDesc);
-            setEvidenceLink(existing.data.evidenceLink);
+            setEvidenceLinks(existing.data.evidenceLink ? existing.data.evidenceLink.split('\n') : ['']);
             hasLoadedRef.current = true;
           }
         }
@@ -65,7 +65,8 @@ export default function EmployeeDashboard() {
 
     const computed = dataService.computeAssessment(scores);
     const data: AssessmentData = {
-      tools, frequency, botNames, botCount, scores, evidenceDesc, evidenceLink
+      tools, frequency, botNames, botCount, scores, evidenceDesc, 
+      evidenceLink: evidenceLinks.filter(l => l.trim()).join('\n')
     };
 
     const newRecord: AssessmentRecord = {
@@ -234,10 +235,43 @@ export default function EmployeeDashboard() {
                     placeholder="描述具體成效，如：節省每週工時 5 小時、品質提升... 等等" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">相關連結 / 附件位置 (可貼多個連結)</label>
-                  <textarea value={evidenceLink} onChange={e => setEvidenceLink(e.target.value)} disabled={record?.status === 'Reviewed'}
-                    className="w-full h-24 rounded-xl apple-glass-ultra-thin border border-white/60 px-4 py-3 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all placeholder:text-slate-400"
-                    placeholder="您的產出檔案連結、SOP 連結或對話記錄分享 (一行一個連結)" />
+                  <label className="block text-sm font-medium text-slate-700 mb-2">相關連結 / 附件位置</label>
+                  <div className="space-y-3">
+                    {evidenceLinks.map((link, index) => (
+                      <div key={index} className="flex gap-2 items-center">
+                        <input
+                          type="text"
+                          value={link}
+                          disabled={record?.status === 'Reviewed'}
+                          onChange={(e) => {
+                            const newLinks = [...evidenceLinks];
+                            newLinks[index] = e.target.value;
+                            setEvidenceLinks(newLinks);
+                          }}
+                          className="flex-1 rounded-xl apple-glass-ultra-thin border border-white/60 px-4 py-2.5 text-sm focus:bg-white/70 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all placeholder:text-slate-400"
+                          placeholder="您的產出檔案連結、SOP 連結或對話記錄分享"
+                        />
+                        {record?.status !== 'Reviewed' && evidenceLinks.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => setEvidenceLinks(evidenceLinks.filter((_, i) => i !== index))}
+                            className="p-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-colors bg-white/50 border border-white/60"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    {record?.status !== 'Reviewed' && (
+                      <button
+                        type="button"
+                        onClick={() => setEvidenceLinks([...evidenceLinks, ''])}
+                        className="text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1 mt-2 bg-blue-50/50 px-3 py-1.5 rounded-lg border border-blue-100 hover:bg-blue-100/50 transition-colors"
+                      >
+                        <span className="text-lg leading-none">+</span> 新增另一個連結欄位
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
