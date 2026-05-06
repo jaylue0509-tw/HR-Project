@@ -6,6 +6,9 @@ import { collection, doc, setDoc, writeBatch } from 'firebase/firestore';
 const USERS_KEY = 'hr_ai_users';
 const ASSESSMENTS_KEY = 'hr_ai_assessments';
 
+// 備份用 Google Sheets 網址
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzfXIXygziACBZpimcnJDgctcwmGeuhKCkWsUNy1CBSSbFqbHjq2ASfhs7rtvFIXVRX/exec';
+
 export const dataService = {
   initFromBackend: async () => {
     // 棄用，改由 AuthContext 使用 onSnapshot 處理
@@ -27,6 +30,14 @@ export const dataService = {
         batch.set(userRef, user);
       });
       await batch.commit();
+
+      // 背景雙重備份至 Google Sheets (不阻擋主流程)
+      fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'syncUsers', data: users })
+      }).catch(e => console.warn('Backup to GAS failed', e));
+
     } catch (e) {
       console.error('Failed to sync users to Firebase', e);
       throw e;
@@ -58,6 +69,14 @@ export const dataService = {
     try {
       const docRef = doc(db, 'assessments', record.userEmail);
       await setDoc(docRef, record);
+
+      // 背景雙重備份至 Google Sheets (不阻擋主流程)
+      fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'syncAssessment', data: record })
+      }).catch(e => console.warn('Backup to GAS failed', e));
+
     } catch (e) {
       console.error('Failed to sync assessment to Firebase', e);
       throw e;
