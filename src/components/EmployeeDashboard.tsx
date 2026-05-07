@@ -58,7 +58,7 @@ export default function EmployeeDashboard() {
     };
   }, [currentUser]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) return;
     setSubmitting(true);
@@ -79,14 +79,10 @@ export default function EmployeeDashboard() {
       supervisorReview: record?.supervisorReview
     };
 
-    dataService.saveAssessment(newRecord).then(() => {
-      setRecord(newRecord);
-      setSubmitting(false);
-      window.dispatchEvent(new Event('hr_data_changed'));
-    }).catch(() => {
-      alert('同步至後台失敗，請檢查網路連線。');
-      setSubmitting(false);
-    });
+    // saveAssessment is local-first and never throws
+    await dataService.saveAssessment(newRecord);
+    setRecord(newRecord);
+    setSubmitting(false);
   };
 
   const scoreHints: Record<number, { label: string, hint: string }> = {

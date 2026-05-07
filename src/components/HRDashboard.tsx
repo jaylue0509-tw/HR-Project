@@ -122,13 +122,10 @@ export default function HRDashboard() {
     const mergedUsers = Array.from(userMap.values());
 
     setMsg('同步資料中...');
-    try {
-      await dataService.setUsers(mergedUsers);
-      refreshUsers();
-      setMsg(`成功合併導入 ${validUsers.length} 筆資料！總共 ${mergedUsers.length} 筆員工。`);
-    } catch {
-      setMsg('同步失敗，請檢查網路。');
-    }
+    // setUsers 已是 local-first，不會拋出錄誤
+    await dataService.setUsers(mergedUsers);
+    refreshUsers();
+    setMsg(`成功合併導入 ${validUsers.length} 筆資料！總共 ${mergedUsers.length} 筆員工。`);
   };
 
   const handleImportCSV = () => {
