@@ -94,6 +94,10 @@ export default function HRDashboard() {
   const [msg, setMsg] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Pagination
+  const PAGE_SIZE = 25;
+  const [currentPage, setCurrentPage] = useState(1);
+
   // --- Import Logic ---
   const sanitizeRow = (row: any): User => {
     const rawEmail = row['e-Mail帳號'] || row['e-mail帳號'] || row['Email'] || row['EMAIL'] || row['email'] || '';
@@ -182,6 +186,11 @@ export default function HRDashboard() {
   const filteredUsers = users.filter(u => 
     u.name.includes(searchTerm) || u.department.includes(searchTerm) || u.email.includes(searchTerm)
   );
+
+  // Reset to page 1 on search
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const pagedUsers = filteredUsers.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const stats = {
     total: users.length,
@@ -420,7 +429,7 @@ export default function HRDashboard() {
                     type="text" 
                     placeholder={activeTab === 'overview' ? "搜尋員工、部門、評核名稱..." : "搜尋姓名 / 部門"}
                     value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
+                    onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                     className="w-full pl-12 pr-4 py-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-violet-500 text-sm outline-none transition-shadow"
                   />
                 </div>
@@ -474,7 +483,7 @@ export default function HRDashboard() {
                     )}
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {filteredUsers.map((u, idx) => {
+                    {pagedUsers.map((u, idx) => {
                       const record = getRecord(u.email);
                       const isReviewed = record?.status === 'Reviewed';
                       if (activeTab === 'talent' && !isReviewed) return null; // Talent pool only shows reviewed
@@ -549,6 +558,26 @@ export default function HRDashboard() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Paginator */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between bg-white px-6 py-4 rounded-2xl border border-slate-100 shadow-sm">
+                  <div className="text-sm text-slate-500">
+                    顯示 {(safePage - 1) * PAGE_SIZE + 1} – {Math.min(safePage * PAGE_SIZE, filteredUsers.length)} 筆，共 {filteredUsers.length} 筆
+                  </div>
+                  <div className="flex gap-1">
+                    <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={safePage === 1} className="px-3 py-1.5 rounded-lg text-sm font-medium border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-30 transition-colors">← 上頁</button>
+                    {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                      const p = totalPages <= 7 ? i + 1 : safePage <= 4 ? i + 1 : safePage + i - 3;
+                      if (p < 1 || p > totalPages) return null;
+                      return (
+                        <button key={p} onClick={() => setCurrentPage(p)} className={`w-9 h-9 rounded-lg text-sm font-bold transition-colors ${safePage === p ? 'bg-violet-600 text-white shadow-sm' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}>{p}</button>
+                      );
+                    })}
+                    <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={safePage === totalPages} className="px-3 py-1.5 rounded-lg text-sm font-medium border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-30 transition-colors">下頁 →</button>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
