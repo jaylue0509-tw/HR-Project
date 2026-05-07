@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Role } from '../types';
-import { dataService } from '../services/dataService';
 
 export default function Login() {
-  const { login, syncStatus } = useAuth();
+  const { login, syncStatus, users } = useAuth();
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [email, setEmail] = useState('');
@@ -18,43 +17,44 @@ export default function Login() {
     setError('');
     setLoading(true);
 
-    const cleanEmail = email.trim();
+    const cleanEmail = email.trim().toLowerCase();
     const cleanName = name.trim();
     const cleanPassword = password.trim();
 
     try {
       if (role === 'HR') {
         const success = await login(cleanEmail, 'HR', cleanPassword);
-        if (!success) {
-          setError('帳號或密碼錯誤，請確認後重試。');
+        if (!success) setError('帳號或密碼錯誤，請確認後重試。');
+        return;
+      }
+
+      // Employee / Supervisor 驗證：用 AuthContext 的 users（已包含 Firebase + localStorage fallback）
+      if (role === 'Employee') {
+        const match = users.find(u =>
+          u.email.trim().toLowerCase() === cleanEmail &&
+          u.name.trim() === cleanName &&
+          (!company || !u.company || u.company === company)
+        );
+        if (!match) {
+          setError('找不到此 Email 與姓名組合，請確認已由 HR 導入，或公司別選擇正確。');
+          return;
         }
-      } else {
-        const users = dataService.getUsers();
-        if (role === 'Employee') {
-          const match = users.find(u => 
-            u.email.trim().toLowerCase() === cleanEmail.toLowerCase() && 
-            u.name.trim() === cleanName && 
-            (!company || u.company === company)
-          );
-          if (!match) {
-            setError('找不到此 Email 與姓名組合，或公司別不符，請確認是否由 HR 導入。');
-            setLoading(false);
-            return;
-          }
-        } else if (role === 'Supervisor') {
-          const match = users.find(u => 
-            u.supervisorEmail.trim().toLowerCase() === cleanEmail.toLowerCase() && 
-            u.supervisorName.trim() === cleanName && 
-            (!company || u.company === company)
-          );
-          if (!match) {
-            setError('找不到擔任主管的此 Email 與姓名組合，或公司別不符。');
-            setLoading(false);
-            return;
-          }
+        await login(cleanEmail, 'Employee');
+        return;
+      }
+
+      if (role === 'Supervisor') {
+        const match = users.find(u =>
+          u.supervisorEmail.trim().toLowerCase() === cleanEmail &&
+          u.supervisorName.trim() === cleanName &&
+          (!company || !u.company || u.company === company)
+        );
+        if (!match) {
+          setError('找不到擔任主管的此 Email 與姓名組合，請確認公司別選擇正確。');
+          return;
         }
-        const success = await login(cleanEmail, role);
-        if (!success) setError('系統錯誤，無法登入。');
+        await login(cleanEmail, 'Supervisor');
+        return;
       }
     } finally {
       setLoading(false);

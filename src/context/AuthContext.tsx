@@ -13,74 +13,110 @@ interface AuthContextType {
   logout: () => void;
   users: User[];
   refreshUsers: () => void;
-  syncFromGAS: () => Promise<void>; // 保留以相容舊程式碼介面
+  syncFromGAS: () => Promise<void>;
   lastSyncTime: Date | null;
   syncStatus: 'idle' | 'loading' | 'error';
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// 逾時時間：5 秒後若 Firebase 還沒回應，自動用 localStorage 資料解鎖
+const FIREBASE_TIMEOUT_MS = 5000;
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentRole, setCurrentRole] = useState<Role | null>(null);
   const [hrAccount, setHrAccount] = useState<HRAccount | null>(null);
-   const [users, setUsers] = useState<User[]>([]);
-   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
-   const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'error'>('loading'); // 預設 loading 直到兩個快照都回來
-   // 用 ref 追蹤有多少快照尚未完成初始載入
-   const pendingSnapshotsRef = React.useRef(2);
+  const [users, setUsers] = useState<User[]>(() => dataService.getUsers()); // 初始值直接從 localStorage
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'error'>('loading');
+  const pendingSnapshotsRef = React.useRef(2);
 
-  // 直接從 Firebase 抓資料並監聽更新
   const syncFromGAS = React.useCallback(async () => {
-    // 為了相容原本的 context 介面保留這個函式，但不做任何事
+    // 保留介面相容性，空實作
   }, []);
 
   useEffect(() => {
-    pendingSnapshotsRef.current = 2; // reset on mount
+    pendingSnapshotsRef.current = 2;
     setSyncStatus('loading');
-    
-    // 監聽 users
-    const unsubscribeUsers = onSnapshot(query(collection(db, 'users')), (snapshot) => {
-      const allUsers: User[] = [];
-      snapshot.forEach((doc) => {
-        allUsers.push(doc.data() as User);
-      });
-      localStorage.setItem('hr_ai_users', JSON.stringify(allUsers));
-      setUsers(allUsers);
-      setLastSyncTime(new Date());
-      // 只在還有 pending 的情況下 decrement
-      if (pendingSnapshotsRef.current > 0) {
-        pendingSnapshotsRef.current -= 1;
-        if (pendingSnapshotsRef.current === 0) setSyncStatus('idle');
-      }
-      window.dispatchEvent(new Event('hr_data_changed'));
-    }, (error) => {
-      console.error('Failed to sync users:', error);
-      pendingSnapshotsRef.current = 0;
-      setSyncStatus('error');
-    });
 
-    // 監聽 assessments
-    const unsubscribeAssessments = onSnapshot(query(collection(db, 'assessments')), (snapshot) => {
-      const allAssessments: any[] = [];
-      snapshot.forEach((doc) => {
-        allAssessments.push(doc.data());
-      });
-      localStorage.setItem('hr_ai_assessments', JSON.stringify(allAssessments));
-      setLastSyncTime(new Date());
-      // 只在還有 pending 的情況下 decrement
+    // ─── Fallback Timer ───────────────────────────────────────────
+    // 如果 Firebase 5 秒內沒有回應，自動用 localStorage 解鎖登入頁
+    const fallbackTimer = setTimeout(() => {
       if (pendingSnapshotsRef.current > 0) {
-        pendingSnapshotsRef.current -= 1;
-        if (pendingSnapshotsRef.current === 0) setSyncStatus('idle');
+        console.warn('Firebase timeout – using localStorage fallback');
+        pendingSnapshotsRef.current = 0;
+        // 確保 users 狀態有資料
+        setUsers(dataService.getUsers());
+        setSyncStatus('idle'); // 解鎖，讓使用者可以登入
       }
-      window.dispatchEvent(new Event('hr_data_changed'));
-    }, (error) => {
-      console.error('Failed to sync assessments:', error);
-      pendingSnapshotsRef.current = 0;
-      setSyncStatus('error');
-    });
+    }, FIREBASE_TIMEOUT_MS);
+
+    // ─── Users Snapshot ───────────────────────────────────────────
+    const unsubscribeUsers = onSnapshot(
+      query(collection(db, 'users')),
+      (snapshot) => {
+        const allUsers: User[] = [];
+        snapshot.forEach((doc) => {
+          allUsers.push(doc.data() as User);
+        });
+        localStorage.setItem('hr_ai_users', JSON.stringify(allUsers));
+        setUsers(allUsers);
+        setLastSyncTime(new Date());
+
+        if (pendingSnapshotsRef.current > 0) {
+          pendingSnapshotsRef.current -= 1;
+          if (pendingSnapshotsRef.current === 0) {
+            clearTimeout(fallbackTimer);
+            setSyncStatus('idle');
+          }
+        }
+        window.dispatchEvent(new Event('hr_data_changed'));
+      },
+      (error) => {
+        console.warn('Firebase users sync failed, using localStorage:', error);
+        // 失敗時不阻擋：用本機資料繼續
+        setUsers(dataService.getUsers());
+        pendingSnapshotsRef.current = Math.max(0, pendingSnapshotsRef.current - 1);
+        if (pendingSnapshotsRef.current === 0) {
+          clearTimeout(fallbackTimer);
+          setSyncStatus('idle');
+        }
+      }
+    );
+
+    // ─── Assessments Snapshot ─────────────────────────────────────
+    const unsubscribeAssessments = onSnapshot(
+      query(collection(db, 'assessments')),
+      (snapshot) => {
+        const allAssessments: any[] = [];
+        snapshot.forEach((doc) => {
+          allAssessments.push(doc.data());
+        });
+        localStorage.setItem('hr_ai_assessments', JSON.stringify(allAssessments));
+        setLastSyncTime(new Date());
+
+        if (pendingSnapshotsRef.current > 0) {
+          pendingSnapshotsRef.current -= 1;
+          if (pendingSnapshotsRef.current === 0) {
+            clearTimeout(fallbackTimer);
+            setSyncStatus('idle');
+          }
+        }
+        window.dispatchEvent(new Event('hr_data_changed'));
+      },
+      (error) => {
+        console.warn('Firebase assessments sync failed, using localStorage:', error);
+        pendingSnapshotsRef.current = Math.max(0, pendingSnapshotsRef.current - 1);
+        if (pendingSnapshotsRef.current === 0) {
+          clearTimeout(fallbackTimer);
+          setSyncStatus('idle');
+        }
+      }
+    );
 
     return () => {
+      clearTimeout(fallbackTimer);
       unsubscribeUsers();
       unsubscribeAssessments();
     };
@@ -92,47 +128,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, role: Role, password?: string): Promise<boolean> => {
     if (role === 'HR') {
-      try {
-        // GAS 必須使用 POST 且因為跨域問題，通常使用 no-cors 或簡單的 fetch
-        // 這裡我們直接對 GAS 發送請求，並在前端做簡易驗證以確保流暢度
-        if (email === 'admin@hr.com' && password === 'admin1234') {
-          const account: HRAccount = {
-            id: 1,
-            email: 'admin@hr.com',
-            name: 'Super Admin',
-            canImport: 1,
-            canExport: 1,
-            canManageAccounts: 1
-          };
-          setHrAccount(account);
-          setCurrentRole('HR');
-          setCurrentUser(null);
-          // 不需特別呼叫 GAS，Firebase 會處理狀態
-
-          return true;
-        }
-        return false;
-      } catch {
-        return false;
+      if (email === 'admin@hr.com' && password === 'admin1234') {
+        const account: HRAccount = {
+          id: 1,
+          email: 'admin@hr.com',
+          name: 'Super Admin',
+          canImport: 1,
+          canExport: 1,
+          canManageAccounts: 1
+        };
+        setHrAccount(account);
+        setCurrentRole('HR');
+        setCurrentUser(null);
+        return true;
       }
+      return false;
     }
 
-    const user = dataService.getUserByEmail(email);
-    if (user) {
-      setCurrentUser(user);
-      setCurrentRole(role);
-      return true;
+    // Employee / Supervisor：先從 React state 找，找不到再讀 localStorage（防止 state 還沒更新）
+    const allUsers = users.length > 0 ? users : dataService.getUsers();
+
+    if (role === 'Employee') {
+      const match = allUsers.find(u => u.email.trim().toLowerCase() === email.trim().toLowerCase());
+      if (match) {
+        setCurrentUser(match);
+        setCurrentRole('Employee');
+        return true;
+      }
+      return false;
     }
-    
-    const asSupervisor = dataService.getUsers().find(u => u.supervisorEmail === email);
-    if (role === 'Supervisor' && asSupervisor) {
-      setCurrentUser({
-        email,
-        name: asSupervisor.supervisorName,
-        company: '', department: '', title: 'Supervisor', supervisorName: '', supervisorEmail: ''
-      });
-      setCurrentRole('Supervisor');
-      return true;
+
+    if (role === 'Supervisor') {
+      const match = allUsers.find(u => u.supervisorEmail.trim().toLowerCase() === email.trim().toLowerCase());
+      if (match) {
+        setCurrentUser({
+          email: email.trim().toLowerCase(),
+          name: match.supervisorName,
+          company: match.company,
+          department: '',
+          title: 'Supervisor',
+          supervisorName: '',
+          supervisorEmail: ''
+        });
+        setCurrentRole('Supervisor');
+        return true;
+      }
+      return false;
     }
 
     return false;
@@ -145,9 +186,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      currentUser, currentRole, hrAccount, login, logout, users, refreshUsers, 
-      syncFromGAS, lastSyncTime, syncStatus 
+    <AuthContext.Provider value={{
+      currentUser, currentRole, hrAccount, login, logout, users, refreshUsers,
+      syncFromGAS, lastSyncTime, syncStatus
     }}>
       {children}
     </AuthContext.Provider>
