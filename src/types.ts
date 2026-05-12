@@ -59,7 +59,7 @@ export interface AssessmentComputed {
 
 export interface SupervisorReview {
   impactScore: number; // 1-5
-  evidenceStatus: 'Approved' | 'Rejected' | 'None';
+  evidenceStatus: 'Approved' | 'Rejected' | 'None' | 'Pending';
   comments: string;
   reviewedAt: string;
   finalGrade: 'A' | 'B' | 'C' | 'D' | 'E';

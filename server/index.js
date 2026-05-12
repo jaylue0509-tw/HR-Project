@@ -3,6 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { setupDB } from './db.js';
+import bcrypt from 'bcrypt';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distPath = path.resolve(__dirname, '../dist');
@@ -84,7 +85,10 @@ async function syncToGoogleSheets() {
 const app = express();
 const port = process.env.PORT || 3002;
 
-app.use(cors());
+app.use(cors({
+  origin: process.env.ALLOW_ORIGIN || '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+}));
 app.use(express.json({ limit: '10mb' }));
 
 // 讓 Express 提供 Vite 編譯後的靜態網頁檔案
@@ -106,10 +110,27 @@ app.post('/api/hr/login', async (req, res) => {
   const { email, password } = req.body;
   try {
     const account = await db.get(
-      'SELECT * FROM hr_accounts WHERE email = ? AND password = ?',
-      [email, password]
+      'SELECT * FROM hr_accounts WHERE email = ?',
+      [email]
     );
     if (!account) return res.status(401).json({ error: '帳號或密碼錯誤' });
+
+    // 雙軌驗證：bcrypt 優先，明文自動升級
+    let isMatch = false;
+    if (account.password.startsWith('$2b$') || account.password.startsWith('$2a$')) {
+      isMatch = await bcrypt.compare(password, account.password);
+    } else {
+      isMatch = (password === account.password);
+      if (isMatch) {
+        // 明文密碼成功，立即升級為 hash
+        const newHash = await bcrypt.hash(password, 10);
+        await db.run('UPDATE hr_accounts SET password = ? WHERE id = ?', [newHash, account.id]);
+        console.log(`[Security] Account ${email} auto-migrated to bcrypt hash.`);
+      }
+    }
+
+    if (!isMatch) return res.status(401).json({ error: '帳號或密碼錯誤' });
+
     // Return account info without password
     const { password: _, ...safe } = account;
     res.json(safe);
@@ -135,9 +156,10 @@ app.post('/api/hr/accounts', async (req, res) => {
   const { name, email, password, canImport = 1, canExport = 1, canManageAccounts = 0 } = req.body;
   if (!name || !email || !password) return res.status(400).json({ error: '缺少必填欄位' });
   try {
+    const hashedPassword = await bcrypt.hash(password, 10);
     await db.run(
       'INSERT INTO hr_accounts (name, email, password, canImport, canExport, canManageAccounts) VALUES (?, ?, ?, ?, ?, ?)',
-      [name, email, password, canImport ? 1 : 0, canExport ? 1 : 0, canManageAccounts ? 1 : 0]
+      [name, email, hashedPassword, canImport ? 1 : 0, canExport ? 1 : 0, canManageAccounts ? 1 : 0]
     );
     res.json({ message: '帳號建立成功' });
   } catch (err) {
@@ -152,9 +174,10 @@ app.put('/api/hr/accounts/:id', async (req, res) => {
   const { id } = req.params;
   try {
     if (password) {
+      const hashedPassword = await bcrypt.hash(password, 10);
       await db.run(
         'UPDATE hr_accounts SET name=?, password=?, canImport=?, canExport=?, canManageAccounts=? WHERE id=?',
-        [name, password, canImport ? 1 : 0, canExport ? 1 : 0, canManageAccounts ? 1 : 0, id]
+        [name, hashedPassword, canImport ? 1 : 0, canExport ? 1 : 0, canManageAccounts ? 1 : 0, id]
       );
     } else {
       await db.run(
@@ -359,16 +382,7 @@ app.get('/api/sync', async (req, res) => {
   }
 });
 
-// Serve static files from the React app
-app.use(express.static(distPath));
-
-// The "catchall" handler: for any request that doesn't
-// match one above, send back React's index.html file.
-app.get('*', (req, res) => {
-  res.sendFile(path.join(distPath, 'index.html'));
-});
-
-// 所有未匹配的 API 請求，都回傳 index.html 讓 React Router 處理
+// The "catchall" handler: serve React's index.html for all non-API routes
 app.get('*', (req, res) => {
   res.sendFile(path.join(distPath, 'index.html'));
 });

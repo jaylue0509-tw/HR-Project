@@ -128,7 +128,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, role: Role, password?: string): Promise<boolean> => {
     if (role === 'HR') {
-      if (email === 'admin@hr.com' && password === 'admin1234') {
+      const ADMIN_EMAIL = (import.meta.env.VITE_ADMIN_EMAIL as string) || 'admin@hr.com';
+      const ADMIN_PASSWORD = (import.meta.env.VITE_ADMIN_PASSWORD as string) || 'admin1234';
+      if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
         const account: HRAccount = {
           id: 1,
           email: 'admin@hr.com',

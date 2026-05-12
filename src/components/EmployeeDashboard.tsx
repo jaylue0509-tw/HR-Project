@@ -141,7 +141,7 @@ export default function EmployeeDashboard() {
     <div className="space-y-6">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h2 className="text-3xl font-display font-bold tracking-tight text-slate-800">員工自評專區</h2>
+          <h2 className="text-3xl font-display font-bold tracking-tight text-slate-800">員工自我盤點專區</h2>
           <p className="text-base text-slate-500 mt-1 font-medium">
             登入身分：<strong>{currentUser?.name}</strong> <span className="text-sm text-slate-400 ml-2">{currentUser?.department} • {currentUser?.title}</span>
           </p>
@@ -196,7 +196,7 @@ export default function EmployeeDashboard() {
             {/* 10 Indicators */}
             <div>
               <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-2">
-                <h3 className="text-lg font-semibold text-slate-800 border-l-4 border-blue-500 pl-2">2. 十項能力指標自評 (1~5分)</h3>
+                <h3 className="text-lg font-semibold text-slate-800 border-l-4 border-blue-500 pl-2">2. 十項能力指標自我盤點 (1~5分)</h3>
                 <div className="flex flex-wrap gap-2 text-[10px]">
                   {Object.entries(scoreHints).map(([val, info]) => (
                     <div key={val} className="apple-glass-ultra-thin px-2 py-1 rounded border border-slate-100 shadow-sm">
@@ -281,11 +281,7 @@ export default function EmployeeDashboard() {
               </div>
             )}
             
-            {record?.status === 'Reviewed' && (
-              <div className="bg-yellow-50 text-yellow-800 p-4 rounded-md text-sm">
-                您的評核主管已覆核，無法再修改。
-              </div>
-            )}
+
           </form>
         </div>
 

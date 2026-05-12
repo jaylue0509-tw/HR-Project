@@ -18,7 +18,7 @@ const ABILITIES = [
   { key: 'decisionSupport', code: 'C06', title: '決策支援', desc: '利用 AI 輔助評估選項、風險分析或決策建議' },
   { key: 'ideaGeneration', code: 'C07', title: '創意生成', desc: '利用 AI 進行創意發想、概念生成或腦力激盪' },
   { key: 'professionalApplication', code: 'C08', title: '專業應用', desc: '在特定專業領域 (法務/財務/設計等) 深度應用 AI' },
-  { key: 'textGeneration', code: 'C09', title: '簡報企劃', desc: '利用 AI 設計簡報架構、企劃書或結構化輸出' }, // Adjusted title to match screenshot
+  { key: 'textGeneration', code: 'C09', title: '文字生成', desc: '利用 AI 設計簡報架構、企劃書或結構化輸出' },
   { key: 'structureDesign', code: 'C10', title: '結構設計', desc: '能系統化地建立 Prompt 系統或框架' },
   { key: 'botConstruction', code: 'C11', title: '自動化建置', desc: '能建置機器人，或已可打造自動化工作流' }
 ];
@@ -45,7 +45,7 @@ const AbilityCard = ({ item, employeeScore, supervisorScore }: any) => {
         </div>
         <div className="text-right flex-shrink-0">
           <div className="text-xs font-bold text-slate-800 flex items-center gap-1 justify-end">
-            <span>★ 員工自評</span>
+            <span>★ 員工自我盤點</span>
             <span>{eScore10.toFixed(1)}/10</span>
           </div>
         </div>
@@ -74,7 +74,7 @@ const AbilityCard = ({ item, employeeScore, supervisorScore }: any) => {
 
 export default function HRDashboard() {
   const { users, hrAccount, logout, refreshUsers } = useAuth();
-  const [activeTab, setActiveTab] = useState<'home' | 'employees' | 'overview' | 'talent' | 'analytics'>('talent');
+  const [activeTab, setActiveTab] = useState<'home' | 'employees' | 'overview' | 'talent' | 'analytics'>('home');
   const [searchTerm, setSearchTerm] = useState('');
   
   // Detail View State
@@ -100,25 +100,34 @@ export default function HRDashboard() {
 
   // --- Import Logic ---
   const sanitizeRow = (row: any): User => {
-    const rawEmail = row['e-Mail帳號'] || row['e-mail帳號'] || row['Email'] || row['EMAIL'] || row['email'] || '';
-    const rawSupEmail = row['主管 e-Mail帳號'] || row['主管 e-mail帳號'] || row['主管Email'] || row['主管EMAIL'] || row['supervisorEmail'] || '';
+    const rawEmail = String(row['e-Mail帳號'] || row['e-mail帳號'] || row['Email'] || row['EMAIL'] || row['email'] || '').trim();
+    const rawSupEmail = String(row['主管 e-Mail帳號'] || row['主管 e-mail帳號'] || row['主管Email'] || row['主管EMAIL'] || row['supervisorEmail'] || '').trim();
+    
+    // 移除姓名中的所有空格，確保匹配精準
+    const rawName = String(row['中文姓名'] || row['姓名'] || row['Name'] || '').replace(/\s+/g, '');
+    
     return {
       company: String(row['公司別'] || row['公司'] || row['Company'] || '').trim(),
       department: String(row['部門中文名稱'] || row['部門'] || row['Department'] || '').trim(),
-      name: String(row['中文姓名'] || row['姓名'] || row['Name'] || '').replace(/\s+/g, ''),
+      name: rawName,
       title: String(row['職務中文名稱'] || row['職稱'] || row['Title'] || '').trim(),
-      email: String(rawEmail).replace(/\s+/g, '').toLowerCase(),
+      email: rawEmail.toLowerCase(),
       supervisorName: String(row['主管'] || row['主管姓名'] || row['Supervisor'] || '').replace(/\s+/g, ''),
-      supervisorEmail: String(rawSupEmail).replace(/\s+/g, '').toLowerCase(),
+      supervisorEmail: rawSupEmail.toLowerCase(),
     };
   };
 
   const processImport = async (importedUsers: User[]) => {
-    const validUsers = importedUsers.filter(u => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(u.email));
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    
+    const validUsers = importedUsers.filter(u => u.name && emailRegex.test(u.email));
+    const invalidCount = importedUsers.length - validUsers.length;
+
     if (validUsers.length === 0) {
-      setMsg('資料格式不正確，找不到 Email 欄位。');
+      setMsg(`導入失敗：找不到有效的員工資料。請檢查「姓名」與「Email」欄位是否正確。`);
       return;
     }
+
     const existingUsers = dataService.getUsers();
     const userMap = new Map<string, User>();
     existingUsers.forEach(u => userMap.set(u.email, u));
@@ -126,10 +135,12 @@ export default function HRDashboard() {
     const mergedUsers = Array.from(userMap.values());
 
     setMsg('同步資料中...');
-    // setUsers 已是 local-first，不會拋出錄誤
     await dataService.setUsers(mergedUsers);
     refreshUsers();
-    setMsg(`成功合併導入 ${validUsers.length} 筆資料！總共 ${mergedUsers.length} 筆員工。`);
+    
+    let resultMsg = `成功合併導入 ${validUsers.length} 筆資料！`;
+    if (invalidCount > 0) resultMsg += `（另有 ${invalidCount} 筆資料格式不全已跳過）`;
+    setMsg(resultMsg);
   };
 
   const handleImportCSV = () => {
@@ -256,7 +267,7 @@ export default function HRDashboard() {
             {/* Right Column: Radar & Evidence */}
             <div className="space-y-6">
               <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
-                <h3 className="font-bold text-slate-800 mb-4">自評雷達圖</h3>
+                <h3 className="font-bold text-slate-800 mb-4">自我盤點雷達圖</h3>
                 <div className="h-64">
                   {selectedRecord.computed && <RadarProfile computed={selectedRecord.computed} />}
                 </div>
@@ -307,7 +318,7 @@ export default function HRDashboard() {
         <div className="p-6 pb-4">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center text-white font-black text-sm shadow-lg shadow-violet-200">AI</div>
-            <span className="font-black text-slate-800 text-lg tracking-tight">東森集團人才評核</span>
+            <span className="font-black text-slate-800 text-lg tracking-tight">職能發展評鑑</span>
           </div>
         </div>
         
@@ -358,7 +369,73 @@ export default function HRDashboard() {
         <div className="px-8 pb-8 space-y-6">
           
           {activeTab === 'home' && (
-             <div className="text-slate-500 text-center py-20">歡迎來到 HR 管理控制台。請從左側選單選擇功能。</div>
+            <div className="space-y-6">
+              {/* KPI Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                  <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">總員工人數</div>
+                  <div className="text-3xl font-black text-slate-800">{stats.total}</div>
+                  <div className="text-xs text-slate-400 mt-1">已匯入系統</div>
+                </div>
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                  <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">填寫完成率</div>
+                  <div className="text-3xl font-black text-violet-600">{completionRate}%</div>
+                  <div className="text-xs text-slate-400 mt-1">{stats.completed} / {stats.total} 人</div>
+                </div>
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                  <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">待主管審核</div>
+                  <div className="text-3xl font-black text-orange-500">{stats.pending}</div>
+                  <div className="text-xs text-slate-400 mt-1">已送出 / 未覆核</div>
+                </div>
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                  <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">已核定完成</div>
+                  <div className="text-3xl font-black text-emerald-600">{stats.reviewed}</div>
+                  <div className="text-xs text-slate-400 mt-1">等級已確定</div>
+                </div>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <div className="flex justify-between items-center mb-3">
+                  <span className="text-sm font-bold text-slate-700">整體評核進度</span>
+                  <span className="text-sm font-bold text-violet-600">{completionRate}%</span>
+                </div>
+                <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 rounded-full transition-all duration-700"
+                    style={{ width: `${completionRate}%` }}
+                  />
+                </div>
+                <div className="flex gap-6 mt-3 text-xs text-slate-500">
+                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-orange-400 inline-block" />待審核 {stats.pending} 人</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />已核定 {stats.reviewed} 人</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-slate-300 inline-block" />未填寫 {stats.total - stats.completed} 人</span>
+                </div>
+              </div>
+
+              {/* Quick Actions */}
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <h3 className="text-sm font-bold text-slate-700 mb-4">快速功能入口</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {[
+                    { label: '員工管理', desc: '導入 / 匯入員工資料', icon: '👥', tab: 'employees' as const },
+                    { label: '評核總覽', desc: '查看全員填寫狀態', icon: '📋', tab: 'overview' as const },
+                    { label: '人才庫', desc: '瀏覽已核定人才', icon: '⭐', tab: 'talent' as const },
+                    { label: '統計分析', desc: '等級分布圖表', icon: '📊', tab: 'analytics' as const },
+                  ].map(item => (
+                    <button
+                      key={item.tab}
+                      onClick={() => setActiveTab(item.tab)}
+                      className="text-left p-4 rounded-xl border border-slate-100 hover:border-violet-200 hover:bg-violet-50/50 transition-all group"
+                    >
+                      <div className="text-2xl mb-2">{item.icon}</div>
+                      <div className="text-sm font-bold text-slate-800 group-hover:text-violet-700">{item.label}</div>
+                      <div className="text-xs text-slate-400 mt-0.5">{item.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           )}
 
           {activeTab === 'analytics' && (

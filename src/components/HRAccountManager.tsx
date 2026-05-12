@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { HRAccount } from '../types';
 import { useAuth } from '../context/AuthContext';
 
-const API = 'https://hr-project-96mr.onrender.com';
+const API = import.meta.env.VITE_API_URL || 'https://hr-project-96mr.onrender.com';
 
 export default function HRAccountManager() {
   const { hrAccount } = useAuth();
@@ -20,8 +20,12 @@ export default function HRAccountManager() {
     setLoading(true);
     try {
       const res = await fetch(`${API}/api/hr/accounts`);
+      if (!res.ok) throw new Error('無法取得帳號資料');
       const data = await res.json();
       setAccounts(data);
+    } catch (err) {
+      console.error('Fetch accounts failed:', err);
+      showMsg('無法連線至後端伺服器，請檢查網路狀態', 'err');
     } finally {
       setLoading(false);
     }

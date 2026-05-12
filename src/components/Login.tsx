@@ -80,8 +80,9 @@ export default function Login() {
           <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-[1.25rem] flex items-center justify-center mx-auto mb-6 shadow-xl ring-4 ring-white/60">
             <span className="text-3xl">✨</span>
           </div>
-          <h1 className="text-3xl font-display font-bold tracking-tight text-slate-900 mb-2">AI 人才評核系統</h1>
-          <p className="text-base text-slate-500 font-medium">請選擇您的身分並登入 <span className="text-[10px] bg-slate-900/5 text-slate-500 px-2 py-1 rounded-full ml-1 font-semibold">2026-04-30</span></p>
+          <h1 className="text-3xl font-display font-bold tracking-tight text-slate-900 mb-2">AI 人才潛力分析平台</h1>
+          <p className="text-base text-slate-500 font-medium mb-1">職能發展評鑑</p>
+          <p className="text-sm text-slate-400">請選擇您的身分並登入</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-5">
@@ -93,7 +94,7 @@ export default function Login() {
                 <button
                   key={r}
                   type="button"
-                  onClick={() => { setRole(r); setError(''); setPassword(''); setCompany(''); }}
+                  onClick={() => { setRole(r); setError(''); setPassword(''); setCompany(''); setName(''); setEmail(''); }}
                   className={`py-3 px-2 text-xs font-semibold rounded-2xl border transition-all duration-300 flex flex-col items-center gap-1.5 ${
                     role === r
                       ? 'bg-slate-900 text-white border-slate-800 shadow-md scale-[1.02]'
@@ -107,7 +108,8 @@ export default function Login() {
             </div>
           </div>
 
-          {/* Company Selection - Now for ALL roles */}
+          {/* Company Selection - hidden for HR */}
+          {role !== 'HR' && (
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">公司別</label>
             <select
@@ -131,6 +133,7 @@ export default function Login() {
               <option value="分眾傳媒">分眾傳媒</option>
             </select>
           </div>
+          )}
 
           {/* Employee / Supervisor: name + email */}
           {role !== 'HR' ? (

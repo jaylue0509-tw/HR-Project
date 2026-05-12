@@ -10,23 +10,25 @@ export class ApiKeyManager {
 
   private initializeKeys() {
     // 優先讀取 .env 中的變數
-    const metaEnv = (import.meta as any).env || {};
     const envKeys = [
-      metaEnv.VITE_GEMINI_API_KEY_1,
-      metaEnv.VITE_GEMINI_API_KEY_2,
-      metaEnv.VITE_GEMINI_API_KEY_3,
-      metaEnv.VITE_GEMINI_API_KEY_4,
-      metaEnv.VITE_GEMINI_API_KEY_5,
+      import.meta.env.VITE_GEMINI_API_KEY_1,
+      import.meta.env.VITE_GEMINI_API_KEY_2,
+      import.meta.env.VITE_GEMINI_API_KEY_3,
+      import.meta.env.VITE_GEMINI_API_KEY_4,
+      import.meta.env.VITE_GEMINI_API_KEY_5,
     ].filter(Boolean) as string[];
 
     this.keys = envKeys;
-    
-    // 如果環境變數中沒有金鑰，則提供預設金鑰 (與 Proxy 同步)
+
+    // 如果環境變數中沒有金鑰，讀取 VITE_GEMINI_API_KEY 作為單一備用
     if (this.keys.length === 0) {
-      this.keys = [
-        "AIzaSyB2tAlOs0BjKyRRTVH4kIB9Ss-JoUJhsJc" // 新的 API Key
-      ];
-      console.log("[ApiKeyManager] 使用預設備用金鑰");
+      const fallback = import.meta.env.VITE_GEMINI_API_KEY;
+      if (fallback) {
+        this.keys = [fallback];
+        console.log('[ApiKeyManager] 使用 VITE_GEMINI_API_KEY 備用金鑰');
+      } else {
+        console.warn('[ApiKeyManager] 未設定任何 Gemini API Key，AI 功能將無法使用');
+      }
     }
   }
 

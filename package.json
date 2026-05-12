@@ -1,5 +1,5 @@
 {
-  "name": "react-example",
+  "name": "hr-ai-assessment",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -25,6 +25,7 @@
     "@radix-ui/react-tabs": "^1.1.13",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
+    "bcrypt": "^6.0.0",
     "clsx": "^2.1.1",
     "concurrently": "^9.2.1",
     "cors": "^2.8.6",
@@ -53,5 +54,8 @@
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
+  },
+  "overrides": {
+    "rollup": "npm:@rollup/wasm-node"
   }
 }

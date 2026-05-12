@@ -10,43 +10,42 @@ const ASSESSMENTS_KEY = 'hr_ai_assessments';
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbzfXIXygziACBZpimcnJDgctcwmGeuhKCkWsUNy1CBSSbFqbHjq2ASfhs7rtvFIXVRX/exec';
 
 export const dataService = {
-  initFromBackend: async () => {
-    // 棄用，改由 AuthContext 使用 onSnapshot 處理
-  },
-
   getUsers: (): User[] => {
     const data = localStorage.getItem(USERS_KEY);
     return data ? JSON.parse(data) : [];
   },
+
 
   setUsers: async (users: User[]) => {
     // 先寫 localStorage，確保即使 Firebase 失敗也能用
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
     
     // Firebase 寫入：切分成最多 499 筆一批（Firebase batch 上限 500）
-    try {
-      const CHUNK_SIZE = 499;
-      for (let i = 0; i < users.length; i += CHUNK_SIZE) {
-        const chunk = users.slice(i, i + CHUNK_SIZE);
-        const batch = writeBatch(db);
-        chunk.forEach(user => {
-          const userRef = doc(db, 'users', user.email);
-          batch.set(userRef, user);
+    const syncToCloud = async () => {
+      try {
+        const CHUNK_SIZE = 499;
+        for (let i = 0; i < users.length; i += CHUNK_SIZE) {
+          const chunk = users.slice(i, i + CHUNK_SIZE);
+          const batch = writeBatch(db);
+          chunk.forEach(user => {
+            const userRef = doc(db, 'users', user.email);
+            batch.set(userRef, user);
+          });
+          await batch.commit();
+        }
+
+        // 背景雙重備份至 Google Sheets (不阻擋主流程)
+        await fetch(GAS_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'syncUsers', data: users })
         });
-        await batch.commit();
+      } catch (e) {
+        console.warn('Firebase sync failed for users (data saved locally):', e);
       }
-
-      // 背景雙重備份至 Google Sheets (不阻擋主流程)
-      fetch(GAS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'syncUsers', data: users })
-      }).catch(e => console.warn('Backup to GAS failed', e));
-
-    } catch (e) {
-      // Firebase 失敗只是記錄 warning，不將錯誤向上拋出（不打斷使用者操作）
-      console.warn('Firebase sync failed for users (data saved locally):', e);
-    }
+    };
+    
+    syncToCloud();
   },
 
   getUserByEmail(email: string): User | undefined {
@@ -74,21 +73,23 @@ export const dataService = {
     window.dispatchEvent(new Event('hr_data_changed'));
     
     // Firebase 寫入：失敗只是記錄 warning，不閘塞主流程
-    try {
-      const docRef = doc(db, 'assessments', record.userEmail);
-      await setDoc(docRef, record);
+    const syncToCloud = async () => {
+      try {
+        const docRef = doc(db, 'assessments', record.userEmail);
+        await setDoc(docRef, record);
 
-      // 背景雙重備份至 Google Sheets
-      fetch(GAS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'syncAssessment', data: record })
-      }).catch(e => console.warn('Backup to GAS failed', e));
-
-    } catch (e) {
-      console.warn('Firebase sync failed for assessment (data saved locally):', e);
-      // 不再 throw，讓呼叫端認為成功，因為本地已儲存
-    }
+        // 背景雙重備份至 Google Sheets
+        await fetch(GAS_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'syncAssessment', data: record })
+        });
+      } catch (e) {
+        console.warn('Firebase sync failed for assessment (data saved locally):', e);
+      }
+    };
+    
+    syncToCloud();
   },
 
   getAssessmentByEmail(email: string): AssessmentRecord | undefined {

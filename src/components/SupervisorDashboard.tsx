@@ -5,7 +5,7 @@ import { User, AssessmentRecord, SupervisorReview } from '../types';
 import RadarProfile from './RadarProfile';
 import TalentProfile from './TalentProfile';
 import GradeAnalytics from './GradeAnalytics';
-import * as XLSX from 'xlsx';
+
 
 export default function SupervisorDashboard() {
   const { currentUser, users } = useAuth();
@@ -71,7 +71,7 @@ export default function SupervisorDashboard() {
     setIsEditingData(false);
   };
 
-  const handleSaveEditData = () => {
+  const handleSaveEditData = async () => {
     if (!selectedRecord || !editDataForm) return;
     const computed = dataService.computeAssessment(editDataForm.scores);
     const updatedRecord: AssessmentRecord = {
@@ -85,14 +85,14 @@ export default function SupervisorDashboard() {
     if (updatedRecord.supervisorReview) {
       updatedRecord.supervisorReview.finalGrade = dataService.calculateFinalGrade(computed, updatedRecord.supervisorReview);
     }
-    dataService.saveAssessment(updatedRecord).then(() => {
-      setSelectedRecord(updatedRecord);
-      setIsEditingData(false);
-      loadTeam();
-    }).catch(() => alert('儲存修改失敗，請檢查網路連線。'));
+    // saveAssessment is local-first, never throws
+    await dataService.saveAssessment(updatedRecord);
+    setSelectedRecord(updatedRecord);
+    setIsEditingData(false);
+    loadTeam();
   };
 
-  const submitReview = () => {
+  const submitReview = async () => {
     if (!selectedRecord || !selectedRecord.computed) return;
     const review: SupervisorReview = {
       impactScore, evidenceStatus, comments, reviewedAt: new Date().toISOString(), finalGrade: 'E'
@@ -101,11 +101,14 @@ export default function SupervisorDashboard() {
     const updatedRecord: AssessmentRecord = {
       ...selectedRecord, status: 'Reviewed', supervisorReview: review
     };
-    dataService.saveAssessment(updatedRecord).then(() => {
-      setSelectedRecord(null);
-      loadTeam();
-    }).catch(() => alert('提交覆核失敗，請檢查網路連線。'));
+    // saveAssessment is local-first, never throws
+    await dataService.saveAssessment(updatedRecord);
+    setSelectedRecord(null);
+    setIsEditingData(false);
+    setEditDataForm(null);
+    loadTeam();
   };
+
 
   const filteredTeam = teamRecords.filter(t => 
     t.user.name.includes(searchTerm) || t.user.department.includes(searchTerm) || t.user.email.includes(searchTerm)
@@ -224,7 +227,7 @@ export default function SupervisorDashboard() {
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                  <div>
-                    <h4 className="font-bold text-slate-800 mb-3 text-lg flex items-center gap-2"><span className="text-violet-500">❖</span> 自評雷達圖</h4>
+                    <h4 className="font-bold text-slate-800 mb-3 text-lg flex items-center gap-2"><span className="text-violet-500">❖</span> 自我盤點雷達圖</h4>
                     <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 h-80">
                       {selectedRecord.computed && <RadarProfile computed={selectedRecord.computed} />}
                     </div>
@@ -274,7 +277,7 @@ export default function SupervisorDashboard() {
                           setImpactScore(r.supervisorReview?.impactScore || 3);
                           setEvidenceStatus(r.supervisorReview?.evidenceStatus as any || 'None');
                           setComments(r.supervisorReview?.comments || '');
-                          setSelectedRecord({...r, status: 'Submitted' as any});
+                          setSelectedRecord({...r, status: 'Submitted'});
                        }} className="text-sm text-violet-600 bg-violet-50 hover:bg-violet-100 px-4 py-2 rounded-xl font-medium transition-colors border border-violet-100 shadow-sm">✏️ 重新修改覆核</button>
                     </div>
                     <div className="scale-[0.85] transform origin-top -mt-8 -mb-16">
@@ -304,7 +307,7 @@ export default function SupervisorDashboard() {
                          <label className="block text-sm font-bold text-slate-700 mb-2">
                            2. 證據狀態審核
                          </label>
-                         <select value={evidenceStatus} onChange={e => setEvidenceStatus(e.target.value as any)} className="w-full rounded-xl bg-white border border-slate-200 px-4 py-3 text-sm focus:ring-2 focus:ring-violet-500 shadow-sm">
+                         <select value={evidenceStatus} onChange={e => setEvidenceStatus(e.target.value as SupervisorReview['evidenceStatus'])} className="w-full rounded-xl bg-white border border-slate-200 px-4 py-3 text-sm focus:ring-2 focus:ring-violet-500 shadow-sm">
                             <option value="None">未提供</option>
                             <option value="Pending">待確認</option>
                             <option value="Rejected">不符合標準</option>
@@ -368,7 +371,7 @@ export default function SupervisorDashboard() {
         <div className="p-6 pb-4">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center text-white font-black text-sm shadow-lg shadow-violet-200">AI</div>
-            <span className="font-black text-slate-800 text-lg tracking-tight">東森集團人才評核</span>
+            <span className="font-black text-slate-800 text-lg tracking-tight">職能發展評鑑</span>
           </div>
         </div>
         
@@ -460,10 +463,6 @@ export default function SupervisorDashboard() {
                 className="w-full pl-12 pr-4 py-3 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-violet-500 text-sm outline-none transition-shadow"
               />
             </div>
-            <button className="px-6 py-3 bg-slate-50 hover:bg-slate-100 text-slate-600 font-medium rounded-xl border border-slate-200 transition-colors flex items-center gap-2 text-sm">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
-              {activeTab === 'talent' ? '篩選' : '進階篩選'}
-            </button>
           </div>
 
           {/* Main Table */}
@@ -559,11 +558,10 @@ export default function SupervisorDashboard() {
                           <span className="text-slate-600 text-sm">啟用中</span>
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <div className="flex justify-end gap-2 text-slate-400">
+                        <div className="flex justify-end gap-2 text-slate-400">
                             {hasRecord && (
                               <button onClick={() => openReview(t.record!)} className="p-1.5 hover:text-violet-600 hover:bg-violet-50 rounded-md transition-colors" title="修改員工提報資料">✏️</button>
                             )}
-                            <button className="p-1.5 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors" title="檢視">👀</button>
                           </div>
                         </td>
                       </tr>
@@ -597,20 +595,17 @@ export default function SupervisorDashboard() {
                   return null;
                 })}
 
-                {filteredTeam.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
-                      找不到符合條件的資料
-                    </td>
-                  </tr>
-                )}
-                {activeTab === 'talent' && filteredTeam.filter(t => t.record?.status === 'Reviewed').length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
-                      目前尚未有已核定的員工資料
-                    </td>
-                  </tr>
-                )}
+                {(() => {
+                  const isEmpty = activeTab === 'talent'
+                    ? filteredTeam.filter(t => t.record?.status === 'Reviewed').length === 0
+                    : filteredTeam.length === 0;
+                  const msg = activeTab === 'talent' ? '目前尚未有已核定的員工資料' : '找不到符合條件的資料';
+                  return isEmpty ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-12 text-center text-slate-400">{msg}</td>
+                    </tr>
+                  ) : null;
+                })()}
               </tbody>
             </table>
           </div>

@@ -1,6 +1,7 @@
 import sqlite3 from 'sqlite3';
 import { open } from 'sqlite';
 import path from 'path';
+import bcrypt from 'bcrypt';
 
 const dbPath = path.resolve(process.cwd(), 'database.sqlite');
 
@@ -46,11 +47,15 @@ export async function setupDB() {
   // Seed default admin account if no accounts exist
   const count = await db.get('SELECT COUNT(*) as cnt FROM hr_accounts');
   if (count.cnt === 0) {
+    const seedEmail = process.env.ADMIN_EMAIL || 'admin@hr.com';
+    const seedPassword = process.env.ADMIN_PASSWORD || 'admin1234';
+    const hashedPassword = await bcrypt.hash(seedPassword, 10);
     await db.run(
       `INSERT INTO hr_accounts (name, email, password, canImport, canExport, canManageAccounts)
-       VALUES ('系統管理員', 'admin@hr.com', 'admin1234', 1, 1, 1)`
+       VALUES ('系統管理員', ?, ?, 1, 1, 1)`,
+      [seedEmail, hashedPassword]
     );
-    console.log('🔑 Default HR admin created: admin@hr.com / admin1234');
+    console.log(`🔑 Default HR admin created: ${seedEmail} (password hashed)`);
   }
 
   return db;

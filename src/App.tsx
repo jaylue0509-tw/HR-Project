@@ -7,7 +7,7 @@ import Login from './components/Login';
 import { LogOut } from 'lucide-react';
 
 function AppContent() {
-  const { currentRole, logout, syncFromGAS, lastSyncTime, syncStatus } = useAuth();
+  const { currentRole, logout, lastSyncTime, syncStatus, refreshUsers } = useAuth();
 
   if (!currentRole) {
     return <Login />;
@@ -21,7 +21,7 @@ function AppContent() {
       <div className="absolute -bottom-8 left-20 w-96 h-96 bg-indigo-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000 pointer-events-none"></div>
       <header className="bg-white/40 backdrop-blur-xl border-b border-white/60 px-6 py-4 flex items-center justify-between sticky top-0 z-50">
         <h1 className="text-xl font-semibold tracking-tight text-slate-800">
-          AI 人才評核系統
+          AI 人才潛力分析平台
         </h1>
         <div className="flex items-center gap-4">
           <div className="hidden md:flex flex-col items-end mr-2">
@@ -38,10 +38,10 @@ function AppContent() {
             )}
           </div>
           <button 
-            onClick={() => syncFromGAS()}
+            onClick={() => { refreshUsers(); window.dispatchEvent(new Event('hr_data_changed')); }}
             disabled={syncStatus === 'loading'}
             className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all disabled:opacity-50"
-            title="手動同步資料"
+            title="重新整理本地快取"
           >
             <svg className={`w-4 h-4 ${syncStatus === 'loading' ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />

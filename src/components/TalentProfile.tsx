@@ -43,8 +43,8 @@ export default function TalentProfile({ record, user }: Props) {
             <div>
               <div className="text-xl font-bold text-slate-800">姓名：{user.name}</div>
               <div className="text-lg text-slate-600 mt-1">
-                綜合評級：<span translate="no" className="font-bold text-blue-600">{supervisorReview?.finalGrade || 'C'}</span> 級
-                <span className="text-sm text-slate-500 ml-1">({getTalentGradeDesc(supervisorReview?.finalGrade || 'C')})</span>
+                綜合評級：<span translate="no" className="font-bold text-blue-600">{supervisorReview?.finalGrade || '-'}</span> 級
+                {supervisorReview?.finalGrade && <span className="text-sm text-slate-500 ml-1">({getTalentGradeDesc(supervisorReview.finalGrade)})</span>}
               </div>
               <div className="flex flex-wrap gap-2 mt-3">
                 {computed.coreStrengths.split(',').map((s, i) => (

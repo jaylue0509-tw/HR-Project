@@ -1,9 +1,9 @@
 # AutoSwitchGemini.ps1
 # 此腳本用於自動切換 Gemini API Key
-# 邏輯：每 60 秒偵測一次當前 Key 狀態，若報錯(429/403)則自動切換至備用 Key
+# 預先在 .env.local 或系統環境變數設定 GEMINI_KEY_1 與 GEMINI_KEY_2
 
-$Key1 = "AIzaSyDBAzAxGvM2vzHW0cDNN-8XbFKUXsr9R4Q"
-$Key2 = "AIzaSyC-j2GDceRvzbqHf-CnY_GFYuqQ0uqzPDY"
+$Key1 = if ($env:GEMINI_KEY_1) { $env:GEMINI_KEY_1 } else { Read-Host "請輸入主要 Gemini API Key (Key1)" }
+$Key2 = if ($env:GEMINI_KEY_2) { $env:GEMINI_KEY_2 } else { Read-Host "請輸入備用 Gemini API Key (Key2)" }
 
 # 初始化環境變數
 if (-not $env:GEMINI_API_KEY) {
@@ -23,7 +23,7 @@ function Switch-Key {
     # 2. 更新目前工作階段環境變數
     $env:GEMINI_API_KEY = $NewKey
     $env:GOOGLE_API_KEY = $NewKey
-    global:CurrentKey = $NewKey
+    $global:CurrentKey = $NewKey
     
     Write-Host "$(Get-Date) - ✅ 已成功更新環境變數！" -ForegroundColor Green
     Write-Host "🔔 請注意：Antigravity 平台需重啟後才會讀取到新的系統變數。" -ForegroundColor Cyan
