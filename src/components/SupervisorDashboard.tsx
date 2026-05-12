@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { dataService } from '../services/dataService';
+import { aiService } from '../services/aiService';
 import { User, AssessmentRecord, SupervisorReview } from '../types';
 import RadarProfile from './RadarProfile';
 import TalentProfile from './TalentProfile';
@@ -21,6 +22,7 @@ export default function SupervisorDashboard() {
   const [impactScore, setImpactScore] = useState(3);
   const [evidenceStatus, setEvidenceStatus] = useState<'Pending' | 'Approved' | 'Rejected' | 'None'>('None');
   const [comments, setComments] = useState('');
+  const [isGeneratingComment, setIsGeneratingComment] = useState(false);
 
   // Search/Filter
   const [searchTerm, setSearchTerm] = useState('');
@@ -317,7 +319,49 @@ export default function SupervisorDashboard() {
                     </div>
 
                     <div className="mb-6 bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                      <label className="block text-sm font-bold text-slate-700 mb-2">主管評語 (選填)</label>
+                      <div className="flex justify-between items-center mb-2">
+                        <label className="block text-sm font-bold text-slate-700">主管評語 (選填)</label>
+                        <button 
+                          type="button"
+                          disabled={isGeneratingComment}
+                          onClick={async () => {
+                            if (!selectedRecord) return;
+                            setIsGeneratingComment(true);
+                            try {
+                              const prompt = `
+                                你是 HR 專家。請針對員工的「職能發展評鑑」自我盤點結果生成一段專業、具建設性的主管評語。
+                                
+                                員工資料：
+                                - AI 工具：${selectedRecord.data?.tools || '未填寫'}
+                                - 使用頻率：${selectedRecord.data?.frequency || '未知'}
+                                - 機器人應用：${selectedRecord.data?.botNames || '未填寫'} (${selectedRecord.data?.botCount} 個)
+                                - 10項指標得分：${JSON.stringify(selectedRecord.data?.scores)}
+                                - 量化成效：${selectedRecord.data?.evidenceDesc || '未提報'}
+                                
+                                主管判定：
+                                - 成果成熟度 (Impact)：${impactScore} 分
+                                - 證據認可狀態：${evidenceStatus === 'Approved' ? '已認可為有效證據' : '未核可或未提供'}
+                                
+                                請根據以上資訊，生成一段約 100 字以內的專業評語（繁體中文），包含肯定其優點與未來精進建議。直接輸出評語內容即可。
+                              `;
+                              const aiComment = await aiService.generateContent(prompt);
+                              setComments(aiComment);
+                            } catch (err) {
+                              console.error("AI 生成失敗:", err);
+                              alert("AI 生成評語失敗，請稍後再試。");
+                            } finally {
+                              setIsGeneratingComment(false);
+                            }
+                          }}
+                          className="text-[10px] font-bold bg-white text-violet-600 border border-violet-200 px-2 py-1 rounded-lg hover:bg-violet-50 transition-all flex items-center gap-1 shadow-sm disabled:opacity-50"
+                        >
+                          {isGeneratingComment ? (
+                            <><span className="w-2 h-2 bg-violet-400 rounded-full animate-pulse"></span> 生成中...</>
+                          ) : (
+                            <>✨ AI 輔助生成評語</>
+                          )}
+                        </button>
+                      </div>
                       <textarea value={comments} onChange={e => setComments(e.target.value)} className="w-full h-24 rounded-xl bg-white border border-slate-200 px-4 py-3 text-sm focus:ring-2 focus:ring-violet-500 shadow-sm" placeholder="給予員工的建議與回饋..."></textarea>
                     </div>
 
