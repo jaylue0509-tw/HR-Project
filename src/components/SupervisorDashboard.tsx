@@ -22,7 +22,7 @@ export default function SupervisorDashboard() {
   const [impactScore, setImpactScore] = useState(3);
   const [evidenceStatus, setEvidenceStatus] = useState<'Pending' | 'Approved' | 'Rejected' | 'None'>('None');
   const [comments, setComments] = useState('');
-  const [isGeneratingComment, setIsGeneratingComment] = useState(false);
+  const [manualGrade, setManualGrade] = useState<string>('');
 
   // Search/Filter
   const [searchTerm, setSearchTerm] = useState('');
@@ -70,6 +70,7 @@ export default function SupervisorDashboard() {
       setEvidenceStatus((record.data?.evidenceLink || record.data?.evidenceDesc) ? 'Pending' : 'None');
       setComments('');
     }
+    setManualGrade(record.supervisorReview?.finalGrade || '');
     setIsEditingData(false);
   };
 
@@ -97,9 +98,8 @@ export default function SupervisorDashboard() {
   const submitReview = async () => {
     if (!selectedRecord || !selectedRecord.computed) return;
     const review: SupervisorReview = {
-      impactScore, evidenceStatus, comments, reviewedAt: new Date().toISOString(), finalGrade: 'E'
+      impactScore, evidenceStatus, comments, reviewedAt: new Date().toISOString(), finalGrade: manualGrade || 'C'
     };
-    review.finalGrade = dataService.calculateFinalGrade(selectedRecord.computed, review);
     const updatedRecord: AssessmentRecord = {
       ...selectedRecord, status: 'Reviewed', supervisorReview: review
     };
@@ -319,50 +319,28 @@ export default function SupervisorDashboard() {
                     </div>
 
                     <div className="mb-6 bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                      <div className="flex justify-between items-center mb-2">
-                        <label className="block text-sm font-bold text-slate-700">主管評語 (選填)</label>
-                        <button 
-                          type="button"
-                          disabled={isGeneratingComment}
-                          onClick={async () => {
-                            if (!selectedRecord) return;
-                            setIsGeneratingComment(true);
-                            try {
-                              const prompt = `
-                                你是 HR 專家。請針對員工的「職能發展評鑑」自我盤點結果生成一段專業、具建設性的主管評語。
-                                
-                                員工資料：
-                                - AI 工具：${selectedRecord.data?.tools || '未填寫'}
-                                - 使用頻率：${selectedRecord.data?.frequency || '未知'}
-                                - 機器人應用：${selectedRecord.data?.botNames || '未填寫'} (${selectedRecord.data?.botCount} 個)
-                                - 10項指標得分：${JSON.stringify(selectedRecord.data?.scores)}
-                                - 量化成效：${selectedRecord.data?.evidenceDesc || '未提報'}
-                                
-                                主管判定：
-                                - 成果成熟度 (Impact)：${impactScore} 分
-                                - 證據認可狀態：${evidenceStatus === 'Approved' ? '已認可為有效證據' : '未核可或未提供'}
-                                
-                                請根據以上資訊，生成一段約 100 字以內的專業評語（繁體中文），包含肯定其優點與未來精進建議。直接輸出評語內容即可。
-                              `;
-                              const aiComment = await aiService.generateContent(prompt);
-                              setComments(aiComment);
-                            } catch (err) {
-                              console.error("AI 生成失敗:", err);
-                              alert("AI 生成評語失敗，請稍後再試。");
-                            } finally {
-                              setIsGeneratingComment(false);
-                            }
-                          }}
-                          className="text-[10px] font-bold bg-white text-violet-600 border border-violet-200 px-2 py-1 rounded-lg hover:bg-violet-50 transition-all flex items-center gap-1 shadow-sm disabled:opacity-50"
-                        >
-                          {isGeneratingComment ? (
-                            <><span className="w-2 h-2 bg-violet-400 rounded-full animate-pulse"></span> 生成中...</>
-                          ) : (
-                            <>✨ AI 輔助生成評語</>
-                          )}
-                        </button>
-                      </div>
+                      <label className="block text-sm font-bold text-slate-700 mb-2">主管評語 (選填)</label>
                       <textarea value={comments} onChange={e => setComments(e.target.value)} className="w-full h-24 rounded-xl bg-white border border-slate-200 px-4 py-3 text-sm focus:ring-2 focus:ring-violet-500 shadow-sm" placeholder="給予員工的建議與回饋..."></textarea>
+                    </div>
+
+                    <div className="mb-6 bg-violet-50 p-5 rounded-2xl border border-violet-200">
+                      <label className="block text-sm font-bold text-violet-800 mb-3">3. 最終等級判定 (必選)</label>
+                      <div className="flex gap-2">
+                        {(['A', 'B', 'C', 'D', 'E'] as const).map(g => (
+                          <button
+                            key={g}
+                            type="button"
+                            onClick={() => setManualGrade(g)}
+                            className={`flex-1 py-3 rounded-xl font-black text-xl transition-all border-2 ${
+                              manualGrade === g 
+                                ? 'bg-violet-600 text-white border-violet-700 shadow-lg scale-105' 
+                                : 'bg-white text-slate-400 border-slate-200 hover:border-violet-300 hover:text-violet-500'
+                            }`}
+                          >
+                            {g}
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
                     {(() => {
@@ -379,7 +357,7 @@ export default function SupervisorDashboard() {
                       return (
                         <div className={`flex justify-between items-center p-5 rounded-2xl border-2 transition-all shadow-md ${gradeColor[grade]}`}>
                           <div className="space-y-1">
-                            <div className="font-bold text-sm opacity-80">動態判定結果</div>
+                            <div className="font-bold text-sm opacity-80">系統試算建議</div>
                             <div className="font-black text-3xl flex items-baseline gap-1">
                               <span translate="no">{grade}</span>
                               <span className="text-base font-bold opacity-80">級</span>
@@ -392,8 +370,12 @@ export default function SupervisorDashboard() {
                                 <div className="text-xs text-red-600 font-bold mt-1">⚠️ 需有「認可為有效證據」才可升至 A/B 級</div>
                             )}
                           </div>
-                          <button onClick={submitReview} className="bg-slate-900 text-white px-8 py-4 rounded-xl font-bold text-base hover:bg-black shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-0.5">
-                             ✅ 完成覆核並送出
+                          <button 
+                            onClick={submitReview} 
+                            disabled={!manualGrade}
+                            className="bg-slate-900 text-white px-8 py-4 rounded-xl font-bold text-base hover:bg-black shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-0.5 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                          >
+                             ✅ 最終核定並送出
                           </button>
                         </div>
                       );
