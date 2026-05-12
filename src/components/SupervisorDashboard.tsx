@@ -473,7 +473,7 @@ export default function SupervisorDashboard() {
                   <tr>
                     <th className="px-6 py-4">受評人</th>
                     <th className="px-6 py-4">評核狀態</th>
-                    <th className="px-6 py-4">初評分數</th>
+                    <th className="px-6 py-4">盤點分數</th>
                     <th className="px-6 py-4">最終判定等級</th>
                     <th className="px-6 py-4 text-center">操作</th>
                   </tr>
